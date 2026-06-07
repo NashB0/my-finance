@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mis Finanzas</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, system-ui, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 16px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    h1 { font-size: 22px; margin-bottom: 16px; text-align: center; }
+    .card {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    label { display: block; font-size: 13px; margin-bottom: 4px; color: #94a3b8; }
+    input, select {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background: #0f172a;
+      color: #e2e8f0;
+      font-size: 16px;
+      margin-bottom: 12px;
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      background: #3b82f6;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:active { background: #2563eb; }
+    .gasto {
+      background: #1e293b;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .gasto-info { font-size: 14px; }
+    .gasto-info small { color: #94a3b8; display: block; }
+    .gasto-monto { font-weight: bold; font-size: 16px; color: #f87171; }
+    .borrar {
+      background: none;
+      border: none;
+      color: #64748b;
+      width: auto;
+      padding: 4px 8px;
+      font-size: 18px;
+    }
+    .total { font-size: 20px; font-weight: bold; text-align: center; }
+    .vacio { text-align: center; color: #64748b; padding: 20px; }
+  </style>
+</head>
+<body>
+  <h1>💰 Mis Finanzas</h1>
+
+  <div class="card">
+    <label>Monto</label>
+    <input type="number" id="monto" placeholder="0" inputmode="decimal">
+
+    <label>Categoría</label>
+    <select id="categoria">
+      <option>Comida</option>
+      <option>Transporte</option>
+      <option>Servicios</option>
+      <option>Ocio</option>
+      <option>Salud</option>
+      <option>Otros</option>
+    </select>
+
+    <label>Medio de pago</label>
+    <select id="medio">
+      <option>Mercado Pago</option>
+      <option>BBVA</option>
+      <option>Wise</option>
+      <option>Efectivo</option>
+    </select>
+
+    <label>Nota</label>
+    <input type="text" id="nota" placeholder="Opcional">
+
+    <button onclick="agregarGasto()">Agregar gasto</button>
+  </div>
+
+  <div class="card">
+    <div class="total">Total: $<span id="total">0</span></div>
+  </div>
+
+  <div id="lista"></div>
+
+  <script>
+    let gastos = JSON.parse(localStorage.getItem('gastos') || '[]');
+
+    function guardar() {
+      localStorage.setItem('gastos', JSON.stringify(gastos));
+    }
+
+    function agregarGasto() {
+      const monto = parseFloat(document.getElementById('monto').value);
+      if (!monto || monto <= 0) {
+        alert('Ingresá un monto válido');
+        return;
+      }
+      const gasto = {
+        id: Date.now(),
+        monto: monto,
+        categoria: document.getElementById('categoria').value,
+        medio: document.getElementById('medio').value,
+        nota: document.getElementById('nota').value,
+        fecha: new Date().toLocaleDateString('es-AR')
+      };
+      gastos.unshift(gasto);
+      guardar();
+      document.getElementById('monto').value = '';
+      document.getElementById('nota').value = '';
+      render();
+    }
+
+    function borrarGasto(id) {
+      gastos = gastos.filter(g => g.id !== id);
+      guardar();
+      render();
+    }
+
+    function render() {
+      const lista = document.getElementById('lista');
+      const total = gastos.reduce((s, g) => s + g.monto, 0);
+      document.getElementById('total').textContent = total.toLocaleString('es-AR');
+
+      if (gastos.length === 0) {
+        lista.innerHTML = '<div class="vacio">No hay gastos cargados todavía</div>';
+        return;
+      }
+
+      lista.innerHTML = gastos.map(g => `
+        <div class="gasto">
+          <div class="gasto-info">
+            <strong>${g.categoria}</strong>
+            <small>${g.medio} · ${g.fecha}${g.nota ? ' · ' + g.nota : ''}</small>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="gasto-monto">$${g.monto.toLocaleString('es-AR')}</span>
+            <button class="borrar" onclick="borrarGasto(${g.id})">🗑️</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    render();
+  </script>
+</body>
+</html>
