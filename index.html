@@ -60,6 +60,7 @@
     .gasto-monto { font-weight: bold; font-size: 16px; color: #f87171; }
     .ingreso-monto { font-weight: bold; font-size: 16px; color: #4ade80; }
     .ahorro-monto { font-weight: bold; font-size: 16px; color: #60a5fa; }
+    .inversion-monto { font-weight: bold; font-size: 16px; color: #fb923c; }
     .borrar {
       background: none;
       border: none;
@@ -234,9 +235,36 @@
   <!-- INVERSIONES -->
   <div class="seccion" id="seccion-inversiones">
     <h1>📈 Inversiones</h1>
+
     <div class="card">
-      <div class="vacio">Próximamente</div>
+      <label>Monto</label>
+      <input type="number" id="inv-monto" placeholder="0" inputmode="decimal">
+
+      <label>Tipo</label>
+      <select id="inv-tipo">
+        <option>Acciones</option>
+        <option>CEDEARs</option>
+        <option>Cripto</option>
+        <option>Bonos</option>
+        <option>Fondos</option>
+        <option>Plazo fijo</option>
+        <option>Otros</option>
+      </select>
+
+      <label>Nombre/Ticker</label>
+      <input type="text" id="inv-ticker" placeholder="Ej: AAPL, Bitcoin, AL30">
+
+      <label>Nota</label>
+      <input type="text" id="inv-nota" placeholder="Opcional">
+
+      <button onclick="agregarInversion()">Agregar inversión</button>
     </div>
+
+    <div class="card">
+      <div class="total">Total invertido: $<span id="inv-total">0</span></div>
+    </div>
+
+    <div id="inv-lista"></div>
   </div>
 
   <!-- BARRA DE MENU INFERIOR -->
@@ -432,6 +460,64 @@
       }
     }
 
+    // --- Inversiones ---
+    let inversiones = JSON.parse(localStorage.getItem('inversiones') || '[]');
+
+    function guardarInversiones() {
+      localStorage.setItem('inversiones', JSON.stringify(inversiones));
+    }
+
+    function agregarInversion() {
+      const monto = parseFloat(document.getElementById('inv-monto').value);
+      if (!monto || monto <= 0) {
+        alert('Ingresá un monto válido');
+        return;
+      }
+      const inversion = {
+        id: Date.now(),
+        monto: monto,
+        tipo: document.getElementById('inv-tipo').value,
+        ticker: document.getElementById('inv-ticker').value,
+        nota: document.getElementById('inv-nota').value,
+        fecha: new Date().toLocaleDateString('es-AR')
+      };
+      inversiones.unshift(inversion);
+      guardarInversiones();
+      document.getElementById('inv-monto').value = '';
+      document.getElementById('inv-ticker').value = '';
+      document.getElementById('inv-nota').value = '';
+      renderInversiones();
+    }
+
+    function borrarInversion(id) {
+      inversiones = inversiones.filter(inv => inv.id !== id);
+      guardarInversiones();
+      renderInversiones();
+    }
+
+    function renderInversiones() {
+      const lista = document.getElementById('inv-lista');
+      const total = inversiones.reduce((s, inv) => s + inv.monto, 0);
+      document.getElementById('inv-total').textContent = total.toLocaleString('es-AR');
+
+      if (inversiones.length === 0) {
+        lista.innerHTML = '<div class="vacio">No hay inversiones cargadas todavía</div>';
+      } else {
+        lista.innerHTML = inversiones.map(inv => `
+          <div class="gasto">
+            <div class="gasto-info">
+              <strong>${inv.tipo}${inv.ticker ? ' · ' + inv.ticker : ''}</strong>
+              <small>${inv.fecha}${inv.nota ? ' · ' + inv.nota : ''}</small>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span class="inversion-monto">$${inv.monto.toLocaleString('es-AR')}</span>
+              <button class="borrar" onclick="borrarInversion(${inv.id})">🗑️</button>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
     // --- Inicio: histórico mensual ---
     function renderInicio() {
       const cont = document.getElementById('resumen-mensual');
@@ -477,6 +563,7 @@
     render();
     renderIngresos();
     renderAhorros();
+    renderInversiones();
   </script>
 </body>
 </html>
