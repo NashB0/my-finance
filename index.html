@@ -70,6 +70,13 @@
     .total { font-size: 20px; font-weight: bold; text-align: center; }
     .vacio { text-align: center; color: #64748b; padding: 20px; }
 
+    /* Resumen mensual (Inicio) */
+    .mes-titulo { font-size: 16px; font-weight: bold; margin-bottom: 10px; }
+    .fila { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 15px; }
+    .balance { border-top: 1px solid #334155; margin-top: 8px; padding-top: 8px; font-weight: bold; }
+    .verde { color: #4ade80; font-weight: bold; }
+    .rojo { color: #f87171; font-weight: bold; }
+
     /* Secciones: solo se ve la activa */
     .seccion { display: none; }
     .seccion.activa { display: block; }
@@ -109,11 +116,9 @@
 <body>
 
   <!-- INICIO -->
-  <div class="seccion" id="seccion-inicio">
+  <div class="seccion activa" id="seccion-inicio">
     <h1>🏠 Inicio</h1>
-    <div class="card">
-      <div class="vacio">Histórico mensual<br>(lo desarrollamos más adelante)</div>
-    </div>
+    <div id="resumen-mensual"></div>
   </div>
 
   <!-- INGRESOS -->
@@ -156,7 +161,7 @@
   </div>
 
   <!-- GASTOS -->
-  <div class="seccion activa" id="seccion-gastos">
+  <div class="seccion" id="seccion-gastos">
     <h1>💸 Gastos</h1>
 
     <div class="card">
@@ -212,14 +217,16 @@
 
   <!-- BARRA DE MENU INFERIOR -->
   <nav class="nav">
-    <button onclick="mostrar('inicio', this)"><span class="icono">🏠</span>Inicio</button>
+    <button class="activa" onclick="mostrar('inicio', this)"><span class="icono">🏠</span>Inicio</button>
     <button onclick="mostrar('ingresos', this)"><span class="icono">💰</span>Ingresos</button>
-    <button class="activa" onclick="mostrar('gastos', this)"><span class="icono">💸</span>Gastos</button>
+    <button onclick="mostrar('gastos', this)"><span class="icono">💸</span>Gastos</button>
     <button onclick="mostrar('ahorros', this)"><span class="icono">🏦</span>Ahorros</button>
     <button onclick="mostrar('inversiones', this)"><span class="icono">📈</span>Inversiones</button>
   </nav>
 
   <script>
+    const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
     // --- Cambiar de pantalla con el menu ---
     function mostrar(nombre, boton) {
       document.querySelectorAll('.seccion').forEach(s => s.classList.remove('activa'));
@@ -270,21 +277,21 @@
 
       if (gastos.length === 0) {
         lista.innerHTML = '<div class="vacio">No hay gastos cargados todavía</div>';
-        return;
+      } else {
+        lista.innerHTML = gastos.map(g => `
+          <div class="gasto">
+            <div class="gasto-info">
+              <strong>${g.categoria}</strong>
+              <small>${g.medio} · ${g.fecha}${g.nota ? ' · ' + g.nota : ''}</small>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span class="gasto-monto">$${g.monto.toLocaleString('es-AR')}</span>
+              <button class="borrar" onclick="borrarGasto(${g.id})">🗑️</button>
+            </div>
+          </div>
+        `).join('');
       }
-
-      lista.innerHTML = gastos.map(g => `
-        <div class="gasto">
-          <div class="gasto-info">
-            <strong>${g.categoria}</strong>
-            <small>${g.medio} · ${g.fecha}${g.nota ? ' · ' + g.nota : ''}</small>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span class="gasto-monto">$${g.monto.toLocaleString('es-AR')}</span>
-            <button class="borrar" onclick="borrarGasto(${g.id})">🗑️</button>
-          </div>
-        </div>
-      `).join('');
+      renderInicio();
     }
 
     // --- Ingresos ---
@@ -328,21 +335,63 @@
 
       if (ingresos.length === 0) {
         lista.innerHTML = '<div class="vacio">No hay ingresos cargados todavía</div>';
+      } else {
+        lista.innerHTML = ingresos.map(i => `
+          <div class="gasto">
+            <div class="gasto-info">
+              <strong>${i.categoria}</strong>
+              <small>${i.medio} · ${i.fecha}${i.nota ? ' · ' + i.nota : ''}</small>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span class="ingreso-monto">$${i.monto.toLocaleString('es-AR')}</span>
+              <button class="borrar" onclick="borrarIngreso(${i.id})">🗑️</button>
+            </div>
+          </div>
+        `).join('');
+      }
+      renderInicio();
+    }
+
+    // --- Inicio: histórico mensual ---
+    function renderInicio() {
+      const cont = document.getElementById('resumen-mensual');
+      const meses = {};
+
+      function agrupar(items, tipo) {
+        items.forEach(item => {
+          const d = new Date(item.id);
+          const clave = d.getFullYear() + '-' + String(d.getMonth()).padStart(2, '0');
+          if (!meses[clave]) {
+            meses[clave] = { anio: d.getFullYear(), mes: d.getMonth(), ingresos: 0, gastos: 0 };
+          }
+          meses[clave][tipo] += item.monto;
+        });
+      }
+
+      agrupar(ingresos, 'ingresos');
+      agrupar(gastos, 'gastos');
+
+      const claves = Object.keys(meses).sort().reverse();
+
+      if (claves.length === 0) {
+        cont.innerHTML = '<div class="card"><div class="vacio">Todavía no hay datos.<br>Cargá ingresos o gastos.</div></div>';
         return;
       }
 
-      lista.innerHTML = ingresos.map(i => `
-        <div class="gasto">
-          <div class="gasto-info">
-            <strong>${i.categoria}</strong>
-            <small>${i.medio} · ${i.fecha}${i.nota ? ' · ' + i.nota : ''}</small>
+      cont.innerHTML = claves.map(k => {
+        const m = meses[k];
+        const balance = m.ingresos - m.gastos;
+        const claseBal = balance >= 0 ? 'verde' : 'rojo';
+        const signo = balance < 0 ? '-$' : '$';
+        return `
+          <div class="card">
+            <div class="mes-titulo">${MESES[m.mes]} ${m.anio}</div>
+            <div class="fila"><span>Ingresos</span><span class="verde">$${m.ingresos.toLocaleString('es-AR')}</span></div>
+            <div class="fila"><span>Gastos</span><span class="rojo">$${m.gastos.toLocaleString('es-AR')}</span></div>
+            <div class="fila balance"><span>Balance</span><span class="${claseBal}">${signo}${Math.abs(balance).toLocaleString('es-AR')}</span></div>
           </div>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span class="ingreso-monto">$${i.monto.toLocaleString('es-AR')}</span>
-            <button class="borrar" onclick="borrarIngreso(${i.id})">🗑️</button>
-          </div>
-        </div>
-      `).join('');
+        `;
+      }).join('');
     }
 
     render();
