@@ -12,6 +12,7 @@
       background: #0f172a;
       color: #e2e8f0;
       padding: 16px;
+      padding-bottom: 80px;
       max-width: 600px;
       margin: 0 auto;
     }
@@ -67,46 +68,136 @@
     }
     .total { font-size: 20px; font-weight: bold; text-align: center; }
     .vacio { text-align: center; color: #64748b; padding: 20px; }
+
+    /* Secciones: solo se ve la activa */
+    .seccion { display: none; }
+    .seccion.activa { display: block; }
+
+    /* Barra de menu inferior */
+    .nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #1e293b;
+      border-top: 1px solid #334155;
+      display: flex;
+      justify-content: space-around;
+      padding: 8px 0;
+      z-index: 100;
+    }
+    .nav button {
+      background: none;
+      border: none;
+      width: auto;
+      padding: 4px;
+      color: #64748b;
+      font-size: 10px;
+      font-weight: normal;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      white-space: nowrap;
+    }
+    .nav button:active { background: none; }
+    .nav .icono { font-size: 20px; }
+    .nav button.activa { color: #3b82f6; }
   </style>
 </head>
 <body>
-  <h1>💰 Mis Finanzas</h1>
 
-  <div class="card">
-    <label>Monto</label>
-    <input type="number" id="monto" placeholder="0" inputmode="decimal">
-
-    <label>Categoría</label>
-    <select id="categoria">
-      <option>Comida</option>
-      <option>Transporte</option>
-      <option>Servicios</option>
-      <option>Ocio</option>
-      <option>Salud</option>
-      <option>Otros</option>
-    </select>
-
-    <label>Medio de pago</label>
-    <select id="medio">
-      <option>Mercado Pago</option>
-      <option>BBVA</option>
-      <option>Wise</option>
-      <option>Efectivo</option>
-    </select>
-
-    <label>Nota</label>
-    <input type="text" id="nota" placeholder="Opcional">
-
-    <button onclick="agregarGasto()">Agregar gasto</button>
+  <!-- INICIO -->
+  <div class="seccion" id="seccion-inicio">
+    <h1>🏠 Inicio</h1>
+    <div class="card">
+      <div class="vacio">Histórico mensual<br>(lo desarrollamos más adelante)</div>
+    </div>
   </div>
 
-  <div class="card">
-    <div class="total">Total: $<span id="total">0</span></div>
+  <!-- INGRESOS -->
+  <div class="seccion" id="seccion-ingresos">
+    <h1>💰 Ingresos</h1>
+    <div class="card">
+      <div class="vacio">Próximamente</div>
+    </div>
   </div>
 
-  <div id="lista"></div>
+  <!-- GASTOS -->
+  <div class="seccion activa" id="seccion-gastos">
+    <h1>💸 Gastos</h1>
+
+    <div class="card">
+      <label>Monto</label>
+      <input type="number" id="monto" placeholder="0" inputmode="decimal">
+
+      <label>Categoría</label>
+      <select id="categoria">
+        <option>Comida</option>
+        <option>Transporte</option>
+        <option>Servicios</option>
+        <option>Ocio</option>
+        <option>Salud</option>
+        <option>Otros</option>
+      </select>
+
+      <label>Medio de pago</label>
+      <select id="medio">
+        <option>Mercado Pago</option>
+        <option>BBVA</option>
+        <option>Wise</option>
+        <option>Efectivo</option>
+      </select>
+
+      <label>Nota</label>
+      <input type="text" id="nota" placeholder="Opcional">
+
+      <button onclick="agregarGasto()">Agregar gasto</button>
+    </div>
+
+    <div class="card">
+      <div class="total">Total: $<span id="total">0</span></div>
+    </div>
+
+    <div id="lista"></div>
+  </div>
+
+  <!-- AHORROS -->
+  <div class="seccion" id="seccion-ahorros">
+    <h1>🏦 Ahorros</h1>
+    <div class="card">
+      <div class="vacio">Próximamente</div>
+    </div>
+  </div>
+
+  <!-- INVERSIONES -->
+  <div class="seccion" id="seccion-inversiones">
+    <h1>📈 Inversiones</h1>
+    <div class="card">
+      <div class="vacio">Próximamente</div>
+    </div>
+  </div>
+
+  <!-- BARRA DE MENU INFERIOR -->
+  <nav class="nav">
+    <button onclick="mostrar('inicio', this)"><span class="icono">🏠</span>Inicio</button>
+    <button onclick="mostrar('ingresos', this)"><span class="icono">💰</span>Ingresos</button>
+    <button class="activa" onclick="mostrar('gastos', this)"><span class="icono">💸</span>Gastos</button>
+    <button onclick="mostrar('ahorros', this)"><span class="icono">🏦</span>Ahorros</button>
+    <button onclick="mostrar('inversiones', this)"><span class="icono">📈</span>Inversiones</button>
+  </nav>
 
   <script>
+    // --- Cambiar de pantalla con el menu ---
+    function mostrar(nombre, boton) {
+      document.querySelectorAll('.seccion').forEach(s => s.classList.remove('activa'));
+      document.getElementById('seccion-' + nombre).classList.add('activa');
+      document.querySelectorAll('.nav button').forEach(b => b.classList.remove('activa'));
+      boton.classList.add('activa');
+      window.scrollTo(0, 0);
+    }
+
+    // --- Gastos ---
     let gastos = JSON.parse(localStorage.getItem('gastos') || '[]');
 
     function guardar() {
