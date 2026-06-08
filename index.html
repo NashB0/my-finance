@@ -59,6 +59,7 @@
     .gasto-info small { color: #94a3b8; display: block; }
     .gasto-monto { font-weight: bold; font-size: 16px; color: #f87171; }
     .ingreso-monto { font-weight: bold; font-size: 16px; color: #4ade80; }
+    .ahorro-monto { font-weight: bold; font-size: 16px; color: #60a5fa; }
     .borrar {
       background: none;
       border: none;
@@ -202,9 +203,32 @@
   <!-- AHORROS -->
   <div class="seccion" id="seccion-ahorros">
     <h1>🏦 Ahorros</h1>
+
     <div class="card">
-      <div class="vacio">Próximamente</div>
+      <label>Monto</label>
+      <input type="number" id="a-monto" placeholder="0" inputmode="decimal">
+
+      <label>Dónde</label>
+      <select id="a-donde">
+        <option>Caja de ahorro</option>
+        <option>Plazo fijo</option>
+        <option>Dólares</option>
+        <option>Efectivo</option>
+        <option>Mercado Pago</option>
+        <option>Otros</option>
+      </select>
+
+      <label>Nota</label>
+      <input type="text" id="a-nota" placeholder="Opcional">
+
+      <button onclick="agregarAhorro()">Agregar ahorro</button>
     </div>
+
+    <div class="card">
+      <div class="total">Total ahorrado: $<span id="a-total">0</span></div>
+    </div>
+
+    <div id="a-lista"></div>
   </div>
 
   <!-- INVERSIONES -->
@@ -352,6 +376,62 @@
       renderInicio();
     }
 
+    // --- Ahorros ---
+    let ahorros = JSON.parse(localStorage.getItem('ahorros') || '[]');
+
+    function guardarAhorros() {
+      localStorage.setItem('ahorros', JSON.stringify(ahorros));
+    }
+
+    function agregarAhorro() {
+      const monto = parseFloat(document.getElementById('a-monto').value);
+      if (!monto || monto <= 0) {
+        alert('Ingresá un monto válido');
+        return;
+      }
+      const ahorro = {
+        id: Date.now(),
+        monto: monto,
+        donde: document.getElementById('a-donde').value,
+        nota: document.getElementById('a-nota').value,
+        fecha: new Date().toLocaleDateString('es-AR')
+      };
+      ahorros.unshift(ahorro);
+      guardarAhorros();
+      document.getElementById('a-monto').value = '';
+      document.getElementById('a-nota').value = '';
+      renderAhorros();
+    }
+
+    function borrarAhorro(id) {
+      ahorros = ahorros.filter(a => a.id !== id);
+      guardarAhorros();
+      renderAhorros();
+    }
+
+    function renderAhorros() {
+      const lista = document.getElementById('a-lista');
+      const total = ahorros.reduce((s, a) => s + a.monto, 0);
+      document.getElementById('a-total').textContent = total.toLocaleString('es-AR');
+
+      if (ahorros.length === 0) {
+        lista.innerHTML = '<div class="vacio">No hay ahorros cargados todavía</div>';
+      } else {
+        lista.innerHTML = ahorros.map(a => `
+          <div class="gasto">
+            <div class="gasto-info">
+              <strong>${a.donde}</strong>
+              <small>${a.fecha}${a.nota ? ' · ' + a.nota : ''}</small>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span class="ahorro-monto">$${a.monto.toLocaleString('es-AR')}</span>
+              <button class="borrar" onclick="borrarAhorro(${a.id})">🗑️</button>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
     // --- Inicio: histórico mensual ---
     function renderInicio() {
       const cont = document.getElementById('resumen-mensual');
@@ -396,6 +476,7 @@
 
     render();
     renderIngresos();
+    renderAhorros();
   </script>
 </body>
 </html>
