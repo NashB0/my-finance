@@ -33,6 +33,7 @@
       color: #e2e8f0;
       font-size: 16px;
       margin-bottom: 12px;
+      color-scheme: dark;
     }
     button {
       width: 100%;
@@ -163,6 +164,9 @@
       <label>Nota</label>
       <input type="text" id="i-nota" placeholder="Opcional">
 
+      <label>Fecha</label>
+      <input type="date" id="i-fecha">
+
       <button onclick="agregarIngreso()">Agregar ingreso</button>
     </div>
 
@@ -202,6 +206,9 @@
       <label>Nota</label>
       <input type="text" id="nota" placeholder="Opcional">
 
+      <label>Fecha</label>
+      <input type="date" id="g-fecha">
+
       <button onclick="agregarGasto()">Agregar gasto</button>
     </div>
 
@@ -232,6 +239,9 @@
 
       <label>Nota</label>
       <input type="text" id="a-nota" placeholder="Opcional">
+
+      <label>Fecha</label>
+      <input type="date" id="a-fecha">
 
       <button onclick="agregarAhorro()">Agregar ahorro</button>
     </div>
@@ -268,6 +278,9 @@
       <label>Nota</label>
       <input type="text" id="inv-nota" placeholder="Opcional">
 
+      <label>Fecha</label>
+      <input type="date" id="inv-fecha">
+
       <button onclick="agregarInversion()">Agregar inversión</button>
     </div>
 
@@ -294,6 +307,29 @@
       return (n < 0 ? '-$' : '$') + Math.abs(n).toLocaleString('es-AR');
     }
 
+    // Fecha de hoy en formato YYYY-MM-DD (hora local)
+    function hoyISO() {
+      const d = new Date();
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
+    // Devuelve la fecha de un movimiento: usa fechaISO si existe, si no el id viejo
+    function fechaDe(item) {
+      if (item.fechaISO) {
+        const p = item.fechaISO.split('-').map(Number);
+        return new Date(p[0], p[1] - 1, p[2]);
+      }
+      return new Date(item.id);
+    }
+
+    // Lee el campo de fecha y arma {fechaISO, fecha} para guardar
+    function leerFecha(idCampo) {
+      const iso = document.getElementById(idCampo).value || hoyISO();
+      const p = iso.split('-').map(Number);
+      const txt = new Date(p[0], p[1] - 1, p[2]).toLocaleDateString('es-AR');
+      return { fechaISO: iso, fecha: txt };
+    }
+
     // --- Cambiar de pantalla con el menu ---
     function mostrar(nombre, boton) {
       document.querySelectorAll('.seccion').forEach(s => s.classList.remove('activa'));
@@ -316,18 +352,21 @@
         alert('Ingresá un monto válido');
         return;
       }
+      const f = leerFecha('g-fecha');
       const gasto = {
         id: Date.now(),
         monto: monto,
         categoria: document.getElementById('categoria').value,
         medio: document.getElementById('medio').value,
         nota: document.getElementById('nota').value,
-        fecha: new Date().toLocaleDateString('es-AR')
+        fecha: f.fecha,
+        fechaISO: f.fechaISO
       };
       gastos.unshift(gasto);
       guardar();
       document.getElementById('monto').value = '';
       document.getElementById('nota').value = '';
+      document.getElementById('g-fecha').value = hoyISO();
       render();
     }
 
@@ -374,18 +413,21 @@
         alert('Ingresá un monto válido');
         return;
       }
+      const f = leerFecha('i-fecha');
       const ingreso = {
         id: Date.now(),
         monto: monto,
         categoria: document.getElementById('i-categoria').value,
         medio: document.getElementById('i-medio').value,
         nota: document.getElementById('i-nota').value,
-        fecha: new Date().toLocaleDateString('es-AR')
+        fecha: f.fecha,
+        fechaISO: f.fechaISO
       };
       ingresos.unshift(ingreso);
       guardarIngresos();
       document.getElementById('i-monto').value = '';
       document.getElementById('i-nota').value = '';
+      document.getElementById('i-fecha').value = hoyISO();
       renderIngresos();
     }
 
@@ -432,17 +474,20 @@
         alert('Ingresá un monto válido');
         return;
       }
+      const f = leerFecha('a-fecha');
       const ahorro = {
         id: Date.now(),
         monto: monto,
         donde: document.getElementById('a-donde').value,
         nota: document.getElementById('a-nota').value,
-        fecha: new Date().toLocaleDateString('es-AR')
+        fecha: f.fecha,
+        fechaISO: f.fechaISO
       };
       ahorros.unshift(ahorro);
       guardarAhorros();
       document.getElementById('a-monto').value = '';
       document.getElementById('a-nota').value = '';
+      document.getElementById('a-fecha').value = hoyISO();
       renderAhorros();
     }
 
@@ -489,19 +534,22 @@
         alert('Ingresá un monto válido');
         return;
       }
+      const f = leerFecha('inv-fecha');
       const inversion = {
         id: Date.now(),
         monto: monto,
         tipo: document.getElementById('inv-tipo').value,
         ticker: document.getElementById('inv-ticker').value,
         nota: document.getElementById('inv-nota').value,
-        fecha: new Date().toLocaleDateString('es-AR')
+        fecha: f.fecha,
+        fechaISO: f.fechaISO
       };
       inversiones.unshift(inversion);
       guardarInversiones();
       document.getElementById('inv-monto').value = '';
       document.getElementById('inv-ticker').value = '';
       document.getElementById('inv-nota').value = '';
+      document.getElementById('inv-fecha').value = hoyISO();
       renderInversiones();
     }
 
@@ -553,10 +601,10 @@
       const patrimonio = disponible + totalAho + totalInv;
 
       const movs = [];
-      ingresos.forEach(i => movs.push({ t: i.id, v: i.monto }));
-      gastos.forEach(g => movs.push({ t: g.id, v: -g.monto }));
-      ahorros.forEach(a => movs.push({ t: a.id, v: a.monto }));
-      inversiones.forEach(inv => movs.push({ t: inv.id, v: inv.monto }));
+      ingresos.forEach(i => movs.push({ d: fechaDe(i), v: i.monto }));
+      gastos.forEach(g => movs.push({ d: fechaDe(g), v: -g.monto }));
+      ahorros.forEach(a => movs.push({ d: fechaDe(a), v: a.monto }));
+      inversiones.forEach(inv => movs.push({ d: fechaDe(inv), v: inv.monto }));
 
       if (movs.length === 0) {
         cont.innerHTML = '<div class="card"><div class="vacio">Cargá datos para ver tu patrimonio.</div></div>';
@@ -565,7 +613,7 @@
 
       const netMes = {};
       movs.forEach(m => {
-        const d = new Date(m.t);
+        const d = m.d;
         const clave = d.getFullYear() + '-' + String(d.getMonth()).padStart(2, '0');
         if (!netMes[clave]) netMes[clave] = { anio: d.getFullYear(), mes: d.getMonth(), net: 0 };
         netMes[clave].net += m.v;
@@ -631,7 +679,7 @@
 
       function agrupar(items, tipo) {
         items.forEach(item => {
-          const d = new Date(item.id);
+          const d = fechaDe(item);
           const clave = d.getFullYear() + '-' + String(d.getMonth()).padStart(2, '0');
           if (!meses[clave]) {
             meses[clave] = { anio: d.getFullYear(), mes: d.getMonth(), ingresos: 0, gastos: 0 };
@@ -664,6 +712,12 @@
         `;
       }).join('');
     }
+
+    // Poner la fecha de hoy por defecto en los 4 campos
+    ['g-fecha', 'i-fecha', 'a-fecha', 'inv-fecha'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = hoyISO();
+    });
 
     render();
     renderIngresos();
