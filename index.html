@@ -78,6 +78,16 @@
     .balance { border-top: 1px solid #334155; margin-top: 8px; padding-top: 8px; font-weight: bold; }
     .verde { color: #4ade80; font-weight: bold; }
     .rojo { color: #f87171; font-weight: bold; }
+    .azul { color: #60a5fa; font-weight: bold; }
+    .naranja { color: #fb923c; font-weight: bold; }
+
+    /* Tarjeta de Patrimonio */
+    .patri-label { font-size: 13px; color: #94a3b8; margin-bottom: 4px; }
+    .patri-valor { font-size: 26px; font-weight: bold; }
+    .desglose { display: flex; justify-content: space-between; margin-top: 12px; gap: 8px; }
+    .desglose div { flex: 1; text-align: center; background: #0f172a; border-radius: 8px; padding: 8px 4px; }
+    .desglose small { display: block; color: #94a3b8; font-size: 11px; margin-bottom: 2px; }
+    .desglose span { font-size: 13px; font-weight: bold; }
 
     /* Secciones: solo se ve la activa */
     .seccion { display: none; }
@@ -120,6 +130,7 @@
   <!-- INICIO -->
   <div class="seccion activa" id="seccion-inicio">
     <h1>🏠 Inicio</h1>
+    <div id="patrimonio"></div>
     <div id="resumen-mensual"></div>
   </div>
 
@@ -279,6 +290,10 @@
   <script>
     const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
+    function fmt(n) {
+      return (n < 0 ? '-$' : '$') + Math.abs(n).toLocaleString('es-AR');
+    }
+
     // --- Cambiar de pantalla con el menu ---
     function mostrar(nombre, boton) {
       document.querySelectorAll('.seccion').forEach(s => s.classList.remove('activa'));
@@ -343,7 +358,7 @@
           </div>
         `).join('');
       }
-      renderInicio();
+      actualizarInicio();
     }
 
     // --- Ingresos ---
@@ -401,7 +416,7 @@
           </div>
         `).join('');
       }
-      renderInicio();
+      actualizarInicio();
     }
 
     // --- Ahorros ---
@@ -458,6 +473,7 @@
           </div>
         `).join('');
       }
+      actualizarInicio();
     }
 
     // --- Inversiones ---
@@ -516,6 +532,96 @@
           </div>
         `).join('');
       }
+      actualizarInicio();
+    }
+
+    // --- Inicio: actualizar todo ---
+    function actualizarInicio() {
+      renderPatrimonio();
+      renderInicio();
+    }
+
+    // --- Inicio: tarjeta de patrimonio + gráfico ---
+    function renderPatrimonio() {
+      const cont = document.getElementById('patrimonio');
+
+      const totalIng = ingresos.reduce((s, x) => s + x.monto, 0);
+      const totalGas = gastos.reduce((s, x) => s + x.monto, 0);
+      const totalAho = ahorros.reduce((s, x) => s + x.monto, 0);
+      const totalInv = inversiones.reduce((s, x) => s + x.monto, 0);
+      const disponible = totalIng - totalGas;
+      const patrimonio = disponible + totalAho + totalInv;
+
+      const movs = [];
+      ingresos.forEach(i => movs.push({ t: i.id, v: i.monto }));
+      gastos.forEach(g => movs.push({ t: g.id, v: -g.monto }));
+      ahorros.forEach(a => movs.push({ t: a.id, v: a.monto }));
+      inversiones.forEach(inv => movs.push({ t: inv.id, v: inv.monto }));
+
+      if (movs.length === 0) {
+        cont.innerHTML = '<div class="card"><div class="vacio">Cargá datos para ver tu patrimonio.</div></div>';
+        return;
+      }
+
+      const netMes = {};
+      movs.forEach(m => {
+        const d = new Date(m.t);
+        const clave = d.getFullYear() + '-' + String(d.getMonth()).padStart(2, '0');
+        if (!netMes[clave]) netMes[clave] = { anio: d.getFullYear(), mes: d.getMonth(), net: 0 };
+        netMes[clave].net += m.v;
+      });
+
+      const claves = Object.keys(netMes).sort();
+      let acum = 0;
+      const puntos = claves.map(k => {
+        acum += netMes[k].net;
+        return { mes: netMes[k].mes, anio: netMes[k].anio, valor: acum };
+      });
+
+      cont.innerHTML = `
+        <div class="card">
+          <div class="patri-label">💼 Patrimonio total</div>
+          <div class="patri-valor ${patrimonio >= 0 ? 'verde' : 'rojo'}">${fmt(patrimonio)}</div>
+          ${construirGrafico(puntos)}
+          <div class="desglose">
+            <div><small>Disponible</small><span class="${disponible >= 0 ? 'verde' : 'rojo'}">${fmt(disponible)}</span></div>
+            <div><small>Ahorros</small><span class="azul">${fmt(totalAho)}</span></div>
+            <div><small>Inversiones</small><span class="naranja">${fmt(totalInv)}</span></div>
+          </div>
+        </div>
+      `;
+    }
+
+    function construirGrafico(puntos) {
+      const W = 320, H = 150, padL = 12, padR = 12, padT = 14, padB = 28;
+      const plotW = W - padL - padR;
+      const plotH = H - padT - padB;
+      const n = puntos.length;
+      const vals = puntos.map(p => p.valor);
+      let min = Math.min(...vals), max = Math.max(...vals);
+      if (min === max) { min -= 1; max += 1; }
+
+      const coords = puntos.map((p, i) => {
+        const x = padL + (n === 1 ? plotW / 2 : plotW * i / (n - 1));
+        const y = padT + plotH * (1 - (p.valor - min) / (max - min));
+        return { x: x, y: y, p: p };
+      });
+
+      let zeroLine = '';
+      if (min < 0 && max > 0) {
+        const yz = padT + plotH * (1 - (0 - min) / (max - min));
+        zeroLine = `<line x1="${padL}" y1="${yz.toFixed(1)}" x2="${W - padR}" y2="${yz.toFixed(1)}" stroke="#334155" stroke-dasharray="3 3" stroke-width="1"/>`;
+      }
+
+      const linea = coords.length > 1
+        ? `<polyline fill="none" stroke="#a78bfa" stroke-width="2" points="${coords.map(c => c.x.toFixed(1) + ',' + c.y.toFixed(1)).join(' ')}"/>`
+        : '';
+
+      const circulos = coords.map(c => `<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="3.5" fill="#a78bfa"/>`).join('');
+
+      const etiquetas = coords.map(c => `<text x="${c.x.toFixed(1)}" y="${H - 8}" fill="#94a3b8" font-size="9" text-anchor="middle">${MESES[c.p.mes].slice(0, 3)}</text>`).join('');
+
+      return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;margin-top:10px;">${zeroLine}${linea}${circulos}${etiquetas}</svg>`;
     }
 
     // --- Inicio: histórico mensual ---
@@ -540,7 +646,7 @@
       const claves = Object.keys(meses).sort().reverse();
 
       if (claves.length === 0) {
-        cont.innerHTML = '<div class="card"><div class="vacio">Todavía no hay datos.<br>Cargá ingresos o gastos.</div></div>';
+        cont.innerHTML = '';
         return;
       }
 
@@ -548,13 +654,12 @@
         const m = meses[k];
         const balance = m.ingresos - m.gastos;
         const claseBal = balance >= 0 ? 'verde' : 'rojo';
-        const signo = balance < 0 ? '-$' : '$';
         return `
           <div class="card">
             <div class="mes-titulo">${MESES[m.mes]} ${m.anio}</div>
             <div class="fila"><span>Ingresos</span><span class="verde">$${m.ingresos.toLocaleString('es-AR')}</span></div>
             <div class="fila"><span>Gastos</span><span class="rojo">$${m.gastos.toLocaleString('es-AR')}</span></div>
-            <div class="fila balance"><span>Balance</span><span class="${claseBal}">${signo}${Math.abs(balance).toLocaleString('es-AR')}</span></div>
+            <div class="fila balance"><span>Balance</span><span class="${claseBal}">${fmt(balance)}</span></div>
           </div>
         `;
       }).join('');
