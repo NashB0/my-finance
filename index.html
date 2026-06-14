@@ -7,29 +7,18 @@
   <link rel="manifest" href="manifest.json">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, system-ui, sans-serif;
-      background: #0f172a; color: #e2e8f0;
-      padding: 16px; padding-bottom: 80px;
-      max-width: 600px; margin: 0 auto;
-    }
+    body { font-family: -apple-system, system-ui, sans-serif; background: #0f172a; color: #e2e8f0; padding: 16px; padding-bottom: 80px; max-width: 600px; margin: 0 auto; }
     h1 { font-size: 22px; margin-bottom: 16px; text-align: center; }
     .card { background: #1e293b; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
     label { display: block; font-size: 13px; margin-bottom: 4px; color: #94a3b8; }
-    input, select {
-      width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155;
-      background: #0f172a; color: #e2e8f0; font-size: 16px; margin-bottom: 12px; color-scheme: dark;
-    }
-    button {
-      width: 100%; padding: 14px; border: none; border-radius: 8px;
-      background: #3b82f6; color: white; font-size: 16px; font-weight: bold; cursor: pointer;
-    }
+    input, select { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-size: 16px; margin-bottom: 12px; color-scheme: dark; }
+    button { width: 100%; padding: 14px; border: none; border-radius: 8px; background: #3b82f6; color: white; font-size: 16px; font-weight: bold; cursor: pointer; }
     button:active { background: #2563eb; }
     .btn-cancelar { background: #475569; margin-top: 10px; }
-    .gasto {
-      background: #1e293b; border-radius: 8px; padding: 12px; margin-bottom: 8px;
-      display: flex; justify-content: space-between; align-items: center;
-    }
+    .btn-voz { background: #8b5cf6; margin-bottom: 12px; }
+    .btn-voz:active { background: #7c3aed; }
+    #voz-result { font-size: 12px; color: #94a3b8; margin: -4px 0 12px; min-height: 14px; }
+    .gasto { background: #1e293b; border-radius: 8px; padding: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
     .gasto-info { font-size: 14px; }
     .gasto-info small { color: #94a3b8; display: block; }
     .gasto-monto { font-weight: bold; font-size: 16px; color: #f87171; }
@@ -42,10 +31,8 @@
     .mes-titulo { font-size: 16px; font-weight: bold; margin-bottom: 10px; }
     .fila { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 15px; }
     .balance { border-top: 1px solid #334155; margin-top: 8px; padding-top: 8px; font-weight: bold; }
-    .verde { color: #4ade80; font-weight: bold; }
-    .rojo { color: #f87171; font-weight: bold; }
-    .azul { color: #60a5fa; font-weight: bold; }
-    .naranja { color: #fb923c; font-weight: bold; }
+    .verde { color: #4ade80; font-weight: bold; } .rojo { color: #f87171; font-weight: bold; }
+    .azul { color: #60a5fa; font-weight: bold; } .naranja { color: #fb923c; font-weight: bold; }
     .patri-label { font-size: 13px; color: #94a3b8; margin-bottom: 4px; }
     .patri-valor { font-size: 26px; font-weight: bold; }
     .desglose { display: flex; justify-content: space-between; margin-top: 12px; gap: 8px; }
@@ -54,19 +41,11 @@
     .desglose span { font-size: 13px; font-weight: bold; }
     .cotiz-info { font-size: 12px; color: #94a3b8; margin-top: 12px; border-top: 1px solid #334155; padding-top: 10px; line-height: 1.6; }
     .cotiz-info select { width: auto; display: inline-block; padding: 4px 8px; font-size: 12px; margin: 0 0 0 4px; }
-    .seccion { display: none; }
-    .seccion.activa { display: block; }
-    .nav {
-      position: fixed; bottom: 0; left: 0; right: 0; background: #1e293b;
-      border-top: 1px solid #334155; display: flex; justify-content: space-around; padding: 8px 0; z-index: 100;
-    }
-    .nav button {
-      background: none; border: none; width: auto; padding: 4px; color: #64748b;
-      font-size: 10px; font-weight: normal; display: flex; flex-direction: column; align-items: center; gap: 3px; white-space: nowrap;
-    }
+    .seccion { display: none; } .seccion.activa { display: block; }
+    .nav { position: fixed; bottom: 0; left: 0; right: 0; background: #1e293b; border-top: 1px solid #334155; display: flex; justify-content: space-around; padding: 8px 0; z-index: 100; }
+    .nav button { background: none; border: none; width: auto; padding: 4px; color: #64748b; font-size: 10px; font-weight: normal; display: flex; flex-direction: column; align-items: center; gap: 3px; white-space: nowrap; }
     .nav button:active { background: none; }
-    .nav .icono { font-size: 20px; }
-    .nav button.activa { color: #3b82f6; }
+    .nav .icono { font-size: 20px; } .nav button.activa { color: #3b82f6; }
   </style>
 </head>
 <body>
@@ -89,7 +68,7 @@
       <label>Categoría</label>
       <select id="i-categoria"><option>Sueldo</option><option>Freelance</option><option>Ventas</option><option>Intereses</option><option>Regalo</option><option>Otros</option></select>
       <label>Medio</label>
-      <select id="i-medio"><option>Mercado Pago</option><option>BBVA</option><option>Wise</option><option>Efectivo</option></select>
+      <select id="i-medio"><option>Mercado Pago</option><option>BBVA</option><option>Galicia</option><option>Santander</option><option>Nación</option><option>Wise</option><option>Efectivo</option></select>
       <label>Nota</label>
       <input type="text" id="i-nota" placeholder="Opcional">
       <label>Fecha</label>
@@ -105,6 +84,8 @@
   <div class="seccion" id="seccion-gastos">
     <h1>💸 Gastos</h1>
     <div class="card">
+      <button type="button" class="btn-voz" id="btn-voz" onclick="hablarGasto()">🎤 Hablar</button>
+      <div id="voz-result"></div>
       <label>Monto</label>
       <input type="number" id="monto" placeholder="0" inputmode="decimal">
       <label>Moneda</label>
@@ -112,7 +93,7 @@
       <label>Categoría</label>
       <select id="categoria"><option>Comida</option><option>Transporte</option><option>Servicios</option><option>Ocio</option><option>Salud</option><option>Otros</option></select>
       <label>Medio de pago</label>
-      <select id="medio"><option>Mercado Pago</option><option>BBVA</option><option>Wise</option><option>Efectivo</option></select>
+      <select id="medio"><option>Mercado Pago</option><option>BBVA</option><option>Galicia</option><option>Santander</option><option>Nación</option><option>Wise</option><option>Efectivo</option></select>
       <label>Nota</label>
       <input type="text" id="nota" placeholder="Opcional">
       <label>Fecha</label>
@@ -186,44 +167,79 @@
     function simbolo(m) { return m === 'USD' ? 'US$' : m === 'EUR' ? '€' : 'AR$'; }
     function monedaDe(x) { return x.moneda || 'ARS'; }
     function fmtUSD(n) { return (n < 0 ? '-US$' : 'US$') + Math.abs(n).toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+    function aUSD(monto, moneda) { if (!cotiz) return 0; if (moneda === 'USD') return monto; if (moneda === 'EUR') return monto * cotiz.eurUsd; return monto / cotiz.usdArs; }
 
-    function aUSD(monto, moneda) {
-      if (!cotiz) return 0;
-      if (moneda === 'USD') return monto;
-      if (moneda === 'EUR') return monto * cotiz.eurUsd;
-      return monto / cotiz.usdArs;
+    function hoyISO() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+    function fechaDe(item) { if (item.fechaISO) { const p = item.fechaISO.split('-').map(Number); return new Date(p[0], p[1]-1, p[2]); } return new Date(item.id); }
+    function isoDe(item) { const d = fechaDe(item); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+    function leerFecha(idCampo) { const iso = document.getElementById(idCampo).value || hoyISO(); const p = iso.split('-').map(Number); return { fechaISO: iso, fecha: new Date(p[0], p[1]-1, p[2]).toLocaleDateString('es-AR') }; }
+    function totalStr(items) { const sums = {}; items.forEach(x => { const m = monedaDe(x); sums[m] = (sums[m]||0) + x.monto; }); const parts = ['ARS','USD','EUR'].filter(m => sums[m]).map(m => simbolo(m) + sums[m].toLocaleString('es-AR')); return parts.length ? parts.join(' · ') : '$0'; }
+
+    function mostrar(nombre, boton) { document.querySelectorAll('.seccion').forEach(s => s.classList.remove('activa')); document.getElementById('seccion-'+nombre).classList.add('activa'); document.querySelectorAll('.nav button').forEach(b => b.classList.remove('activa')); boton.classList.add('activa'); window.scrollTo(0, 0); }
+
+    // ===== ENTRADA POR VOZ (Gastos) =====
+    function norm(s) { return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+    function tiene(t, palabra) { const esc = palabra.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); return new RegExp('(^|[^a-z0-9])' + esc + '([^a-z0-9]|$)').test(t); }
+
+    const VOZ_MEDIOS = [
+      { k:['mercado pago','mercadopago'], v:'Mercado Pago' },
+      { k:['frances','bbva'], v:'BBVA' },
+      { k:['galicia'], v:'Galicia' },
+      { k:['santander'], v:'Santander' },
+      { k:['nacion','banco nacion'], v:'Nación' },
+      { k:['wise'], v:'Wise' },
+      { k:['efectivo','cash'], v:'Efectivo' }
+    ];
+    const VOZ_CATS = [
+      { v:'Comida', k:['comida','super','supermercado','la anonima','anonima','coto','carrefour','jumbo','vea','changomas','chango mas','almacen','verduleria','restaurante','resto','delivery','rappi','pedidosya','pedidos ya','mcdonalds','burger','cafe','bar','panaderia','kiosco'] },
+      { v:'Transporte', k:['transporte','uber','cabify','didi','taxi','remis','sube','colectivo','subte','nafta','combustible','ypf','shell','axion','estacionamiento','peaje','tren'] },
+      { v:'Servicios', k:['servicio','servicios','luz','gas','agua','internet','telefono','celular','spotify','netflix','disney','alquiler','expensas','edenor','edesur','metrogas','aysa'] },
+      { v:'Ocio', k:['ocio','cine','salida','boliche','juego','videojuego','steam','libro','viaje','hotel','teatro','recital'] },
+      { v:'Salud', k:['salud','farmacia','farmacity','remedio','medico','doctor','prepaga','dentista','gimnasio','gym'] }
+    ];
+    const VOZ_COMERCIOS = [
+      { k:['la anonima','anonima'], n:'La Anónima' }, { k:['coto'], n:'Coto' }, { k:['carrefour'], n:'Carrefour' },
+      { k:['jumbo'], n:'Jumbo' }, { k:['vea'], n:'Vea' }, { k:['changomas','chango mas'], n:'ChangoMás' },
+      { k:['farmacity'], n:'Farmacity' }, { k:['ypf'], n:'YPF' }, { k:['shell'], n:'Shell' }
+    ];
+
+    function hablarGasto() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) { alert('Tu navegador no soporta dictado por voz. Probalo en Chrome.'); return; }
+      const rec = new SR();
+      rec.lang = 'es-AR'; rec.interimResults = false; rec.maxAlternatives = 1;
+      const btn = document.getElementById('btn-voz');
+      document.getElementById('voz-result').textContent = '';
+      btn.textContent = '🎤 Escuchando…';
+      rec.onresult = (e) => { interpretarGasto(e.results[0][0].transcript); };
+      rec.onerror = (e) => { document.getElementById('voz-result').textContent = '⚠️ No te escuché (' + e.error + '). Probá de nuevo.'; };
+      rec.onend = () => { btn.textContent = '🎤 Hablar'; };
+      try { rec.start(); } catch (err) { btn.textContent = '🎤 Hablar'; }
     }
 
-    function hoyISO() {
-      const d = new Date();
-      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-    }
-    function fechaDe(item) {
-      if (item.fechaISO) { const p = item.fechaISO.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }
-      return new Date(item.id);
-    }
-    function isoDe(item) {
-      const d = fechaDe(item);
-      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-    }
-    function leerFecha(idCampo) {
-      const iso = document.getElementById(idCampo).value || hoyISO();
-      const p = iso.split('-').map(Number);
-      return { fechaISO: iso, fecha: new Date(p[0], p[1] - 1, p[2]).toLocaleDateString('es-AR') };
-    }
-    function totalStr(items) {
-      const sums = {};
-      items.forEach(x => { const m = monedaDe(x); sums[m] = (sums[m] || 0) + x.monto; });
-      const parts = ['ARS','USD','EUR'].filter(m => sums[m]).map(m => simbolo(m) + sums[m].toLocaleString('es-AR'));
-      return parts.length ? parts.join(' · ') : '$0';
-    }
+    function interpretarGasto(texto) {
+      document.getElementById('voz-result').textContent = 'Entendí: "' + texto + '" — revisá y tocá Agregar gasto.';
+      const t = norm(texto);
 
-    function mostrar(nombre, boton) {
-      document.querySelectorAll('.seccion').forEach(s => s.classList.remove('activa'));
-      document.getElementById('seccion-' + nombre).classList.add('activa');
-      document.querySelectorAll('.nav button').forEach(b => b.classList.remove('activa'));
-      boton.classList.add('activa');
-      window.scrollTo(0, 0);
+      const mNum = t.match(/(\d[\d.,]*\d|\d)/);
+      if (mNum) { const n = parseInt(mNum[0].replace(/[.,]/g, ''), 10); if (n > 0) document.getElementById('monto').value = n; }
+
+      let moneda = 'ARS';
+      if (tiene(t,'dolar') || tiene(t,'dolares') || tiene(t,'usd')) moneda = 'USD';
+      else if (tiene(t,'euro') || tiene(t,'euros') || tiene(t,'eur')) moneda = 'EUR';
+      document.getElementById('g-moneda').value = moneda;
+
+      for (const m of VOZ_MEDIOS) { if (m.k.some(k => tiene(t, k))) { document.getElementById('medio').value = m.v; break; } }
+      for (const c of VOZ_CATS) { if (c.k.some(k => tiene(t, k))) { document.getElementById('categoria').value = c.v; break; } }
+
+      let nota = '';
+      for (const com of VOZ_COMERCIOS) { if (com.k.some(k => tiene(t, k))) { nota = com.n; break; } }
+      if (!nota) { const mEn = texto.match(/ en (.+?)(?: y | con | pague| pagué|$)/i); if (mEn) nota = mEn[1].trim(); }
+      if (nota) document.getElementById('nota').value = nota;
+
+      const f = document.getElementById('g-fecha');
+      if (tiene(t,'ayer')) { const d = new Date(); d.setDate(d.getDate()-1); f.value = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+      else { f.value = hoyISO(); }
     }
 
     // ===== GASTOS =====
@@ -242,6 +258,7 @@
         gastos.unshift({ id: Date.now(), monto: monto, moneda: document.getElementById('g-moneda').value, categoria: document.getElementById('categoria').value, medio: document.getElementById('medio').value, nota: document.getElementById('nota').value, fecha: f.fecha, fechaISO: f.fechaISO });
         document.getElementById('monto').value = ''; document.getElementById('nota').value = '';
         document.getElementById('g-moneda').value = DEF_MONEDA['g-moneda']; document.getElementById('g-fecha').value = hoyISO();
+        document.getElementById('voz-result').textContent = '';
       }
       guardar(); render();
     }
@@ -263,9 +280,7 @@
       const lista = document.getElementById('lista');
       document.getElementById('total').textContent = 'Total: ' + totalStr(gastos);
       if (gastos.length === 0) { lista.innerHTML = '<div class="vacio">No hay gastos cargados todavía</div>'; }
-      else {
-        lista.innerHTML = gastos.map(g => `<div class="gasto"><div class="gasto-info"><strong>${g.categoria}</strong><small>${g.medio} · ${g.fecha}${g.nota ? ' · ' + g.nota : ''}</small></div><div style="display:flex;align-items:center;gap:4px;"><span class="gasto-monto">${simbolo(monedaDe(g))}${g.monto.toLocaleString('es-AR')}</span><button class="borrar" onclick="editarGasto(${g.id})">✏️</button><button class="borrar" onclick="borrarGasto(${g.id})">🗑️</button></div></div>`).join('');
-      }
+      else { lista.innerHTML = gastos.map(g => `<div class="gasto"><div class="gasto-info"><strong>${g.categoria}</strong><small>${g.medio} · ${g.fecha}${g.nota ? ' · ' + g.nota : ''}</small></div><div style="display:flex;align-items:center;gap:4px;"><span class="gasto-monto">${simbolo(monedaDe(g))}${g.monto.toLocaleString('es-AR')}</span><button class="borrar" onclick="editarGasto(${g.id})">✏️</button><button class="borrar" onclick="borrarGasto(${g.id})">🗑️</button></div></div>`).join(''); }
       actualizarInicio();
     }
 
@@ -306,9 +321,7 @@
       const lista = document.getElementById('i-lista');
       document.getElementById('i-total').textContent = 'Total: ' + totalStr(ingresos);
       if (ingresos.length === 0) { lista.innerHTML = '<div class="vacio">No hay ingresos cargados todavía</div>'; }
-      else {
-        lista.innerHTML = ingresos.map(i => `<div class="gasto"><div class="gasto-info"><strong>${i.categoria}</strong><small>${i.medio} · ${i.fecha}${i.nota ? ' · ' + i.nota : ''}</small></div><div style="display:flex;align-items:center;gap:4px;"><span class="ingreso-monto">${simbolo(monedaDe(i))}${i.monto.toLocaleString('es-AR')}</span><button class="borrar" onclick="editarIngreso(${i.id})">✏️</button><button class="borrar" onclick="borrarIngreso(${i.id})">🗑️</button></div></div>`).join('');
-      }
+      else { lista.innerHTML = ingresos.map(i => `<div class="gasto"><div class="gasto-info"><strong>${i.categoria}</strong><small>${i.medio} · ${i.fecha}${i.nota ? ' · ' + i.nota : ''}</small></div><div style="display:flex;align-items:center;gap:4px;"><span class="ingreso-monto">${simbolo(monedaDe(i))}${i.monto.toLocaleString('es-AR')}</span><button class="borrar" onclick="editarIngreso(${i.id})">✏️</button><button class="borrar" onclick="borrarIngreso(${i.id})">🗑️</button></div></div>`).join(''); }
       actualizarInicio();
     }
 
@@ -348,9 +361,7 @@
       const lista = document.getElementById('a-lista');
       document.getElementById('a-total').textContent = 'Total ahorrado: ' + totalStr(ahorros);
       if (ahorros.length === 0) { lista.innerHTML = '<div class="vacio">No hay ahorros cargados todavía</div>'; }
-      else {
-        lista.innerHTML = ahorros.map(a => `<div class="gasto"><div class="gasto-info"><strong>${a.donde}</strong><small>${a.fecha}${a.nota ? ' · ' + a.nota : ''}</small></div><div style="display:flex;align-items:center;gap:4px;"><span class="ahorro-monto">${simbolo(monedaDe(a))}${a.monto.toLocaleString('es-AR')}</span><button class="borrar" onclick="editarAhorro(${a.id})">✏️</button><button class="borrar" onclick="borrarAhorro(${a.id})">🗑️</button></div></div>`).join('');
-      }
+      else { lista.innerHTML = ahorros.map(a => `<div class="gasto"><div class="gasto-info"><strong>${a.donde}</strong><small>${a.fecha}${a.nota ? ' · ' + a.nota : ''}</small></div><div style="display:flex;align-items:center;gap:4px;"><span class="ahorro-monto">${simbolo(monedaDe(a))}${a.monto.toLocaleString('es-AR')}</span><button class="borrar" onclick="editarAhorro(${a.id})">✏️</button><button class="borrar" onclick="borrarAhorro(${a.id})">🗑️</button></div></div>`).join(''); }
       actualizarInicio();
     }
 
@@ -391,72 +402,42 @@
       const lista = document.getElementById('inv-lista');
       document.getElementById('inv-total').textContent = 'Total invertido: ' + totalStr(inversiones);
       if (inversiones.length === 0) { lista.innerHTML = '<div class="vacio">No hay inversiones cargadas todavía</div>'; }
-      else {
-        lista.innerHTML = inversiones.map(inv => `<div class="gasto"><div class="gasto-info"><strong>${inv.tipo}${inv.ticker ? ' · ' + inv.ticker : ''}</strong><small>${inv.fecha}${inv.nota ? ' · ' + inv.nota : ''}</small></div><div style="display:flex;align-items:center;gap:4px;"><span class="inversion-monto">${simbolo(monedaDe(inv))}${inv.monto.toLocaleString('es-AR')}</span><button class="borrar" onclick="editarInversion(${inv.id})">✏️</button><button class="borrar" onclick="borrarInversion(${inv.id})">🗑️</button></div></div>`).join('');
-      }
+      else { lista.innerHTML = inversiones.map(inv => `<div class="gasto"><div class="gasto-info"><strong>${inv.tipo}${inv.ticker ? ' · ' + inv.ticker : ''}</strong><small>${inv.fecha}${inv.nota ? ' · ' + inv.nota : ''}</small></div><div style="display:flex;align-items:center;gap:4px;"><span class="inversion-monto">${simbolo(monedaDe(inv))}${inv.monto.toLocaleString('es-AR')}</span><button class="borrar" onclick="editarInversion(${inv.id})">✏️</button><button class="borrar" onclick="borrarInversion(${inv.id})">🗑️</button></div></div>`).join(''); }
       actualizarInicio();
     }
 
     // ===== INICIO =====
     function actualizarInicio() { renderPatrimonio(); renderInicio(); }
-
     function selectorCotiz() {
       const nombre = { bolsa:'MEP', blue:'Blue', oficial:'Oficial' }[tipoDolar] || tipoDolar;
-      const linea = cotiz
-        ? `💱 1 US$ = AR$${cotiz.usdArs.toLocaleString('es-AR')} (${nombre}) &nbsp;·&nbsp; 1 € = US$${cotiz.eurUsd.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:4})}<br>Actualizado: ${cotiz.fecha}`
-        : '💱 Actualizando cotizaciones… (la primera vez necesitás internet)';
-      return `<div class="cotiz-info">${linea}<br>Dólar:
-        <select onchange="cambiarTipoDolar(this.value)">
-          <option value="bolsa" ${tipoDolar==='bolsa'?'selected':''}>MEP</option>
-          <option value="blue" ${tipoDolar==='blue'?'selected':''}>Blue</option>
-          <option value="oficial" ${tipoDolar==='oficial'?'selected':''}>Oficial</option>
-        </select></div>`;
+      const linea = cotiz ? `💱 1 US$ = AR$${cotiz.usdArs.toLocaleString('es-AR')} (${nombre}) &nbsp;·&nbsp; 1 € = US$${cotiz.eurUsd.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:4})}<br>Actualizado: ${cotiz.fecha}` : '💱 Actualizando cotizaciones… (la primera vez necesitás internet)';
+      return `<div class="cotiz-info">${linea}<br>Dólar: <select onchange="cambiarTipoDolar(this.value)"><option value="bolsa" ${tipoDolar==='bolsa'?'selected':''}>MEP</option><option value="blue" ${tipoDolar==='blue'?'selected':''}>Blue</option><option value="oficial" ${tipoDolar==='oficial'?'selected':''}>Oficial</option></select></div>`;
     }
-
     function renderPatrimonio() {
       const cont = document.getElementById('patrimonio');
-      if (!cotiz) {
-        cont.innerHTML = `<div class="card"><div class="patri-label">💼 Patrimonio total (US$)</div><div class="vacio">Necesito las cotizaciones para convertir a dólares.</div>${selectorCotiz()}</div>`;
-        return;
-      }
+      if (!cotiz) { cont.innerHTML = `<div class="card"><div class="patri-label">💼 Patrimonio total (US$)</div><div class="vacio">Necesito las cotizaciones para convertir a dólares.</div>${selectorCotiz()}</div>`; return; }
       const sumU = (arr) => arr.reduce((s, x) => s + aUSD(x.monto, monedaDe(x)), 0);
       const totalIng = sumU(ingresos), totalGas = sumU(gastos), totalAho = sumU(ahorros), totalInv = sumU(inversiones);
-      const disponible = totalIng - totalGas;
-      const patrimonio = disponible + totalAho + totalInv;
-
+      const disponible = totalIng - totalGas; const patrimonio = disponible + totalAho + totalInv;
       const movs = [];
       ingresos.forEach(i => movs.push({ d: fechaDe(i), v: aUSD(i.monto, monedaDe(i)) }));
       gastos.forEach(g => movs.push({ d: fechaDe(g), v: -aUSD(g.monto, monedaDe(g)) }));
       ahorros.forEach(a => movs.push({ d: fechaDe(a), v: aUSD(a.monto, monedaDe(a)) }));
       inversiones.forEach(inv => movs.push({ d: fechaDe(inv), v: aUSD(inv.monto, monedaDe(inv)) }));
-
       let grafico = '';
       if (movs.length) {
         const netMes = {};
-        movs.forEach(m => { const d = m.d; const k = d.getFullYear() + '-' + String(d.getMonth()).padStart(2,'0'); if (!netMes[k]) netMes[k] = { mes:d.getMonth(), anio:d.getFullYear(), net:0 }; netMes[k].net += m.v; });
+        movs.forEach(m => { const d = m.d; const k = d.getFullYear()+'-'+String(d.getMonth()).padStart(2,'0'); if (!netMes[k]) netMes[k] = { mes:d.getMonth(), anio:d.getFullYear(), net:0 }; netMes[k].net += m.v; });
         let acum = 0;
         const puntos = Object.keys(netMes).sort().map(k => { acum += netMes[k].net; return { mes:netMes[k].mes, anio:netMes[k].anio, valor:acum }; });
         grafico = construirGrafico(puntos);
       }
-
-      cont.innerHTML = `<div class="card">
-        <div class="patri-label">💼 Patrimonio total (US$)</div>
-        <div class="patri-valor ${patrimonio>=0?'verde':'rojo'}">${fmtUSD(patrimonio)}</div>
-        ${grafico}
-        <div class="desglose">
-          <div><small>Disponible</small><span class="${disponible>=0?'verde':'rojo'}">${fmtUSD(disponible)}</span></div>
-          <div><small>Ahorros</small><span class="azul">${fmtUSD(totalAho)}</span></div>
-          <div><small>Inversiones</small><span class="naranja">${fmtUSD(totalInv)}</span></div>
-        </div>
-        ${selectorCotiz()}
-      </div>`;
+      cont.innerHTML = `<div class="card"><div class="patri-label">💼 Patrimonio total (US$)</div><div class="patri-valor ${patrimonio>=0?'verde':'rojo'}">${fmtUSD(patrimonio)}</div>${grafico}<div class="desglose"><div><small>Disponible</small><span class="${disponible>=0?'verde':'rojo'}">${fmtUSD(disponible)}</span></div><div><small>Ahorros</small><span class="azul">${fmtUSD(totalAho)}</span></div><div><small>Inversiones</small><span class="naranja">${fmtUSD(totalInv)}</span></div></div>${selectorCotiz()}</div>`;
     }
-
     function construirGrafico(puntos) {
       const W = 320, H = 150, padL = 12, padR = 12, padT = 14, padB = 28;
       const plotW = W - padL - padR, plotH = H - padT - padB, n = puntos.length;
-      const vals = puntos.map(p => p.valor);
-      let min = Math.min(...vals), max = Math.max(...vals);
+      const vals = puntos.map(p => p.valor); let min = Math.min(...vals), max = Math.max(...vals);
       if (min === max) { min -= 1; max += 1; }
       const coords = puntos.map((p, i) => ({ x: padL + (n === 1 ? plotW/2 : plotW*i/(n-1)), y: padT + plotH*(1-(p.valor-min)/(max-min)), p: p }));
       let zeroLine = '';
@@ -466,45 +447,30 @@
       const etiq = coords.map(c => `<text x="${c.x.toFixed(1)}" y="${H-8}" fill="#94a3b8" font-size="9" text-anchor="middle">${MESES[c.p.mes].slice(0,3)}</text>`).join('');
       return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;margin-top:10px;">${zeroLine}${linea}${circ}${etiq}</svg>`;
     }
-
     function renderInicio() {
       const cont = document.getElementById('resumen-mensual');
       if (!cotiz) { cont.innerHTML = ''; return; }
       const meses = {};
-      function agrupar(items, tipo) {
-        items.forEach(item => { const d = fechaDe(item); const k = d.getFullYear()+'-'+String(d.getMonth()).padStart(2,'0'); if (!meses[k]) meses[k] = { anio:d.getFullYear(), mes:d.getMonth(), ingresos:0, gastos:0 }; meses[k][tipo] += aUSD(item.monto, monedaDe(item)); });
-      }
+      function agrupar(items, tipo) { items.forEach(item => { const d = fechaDe(item); const k = d.getFullYear()+'-'+String(d.getMonth()).padStart(2,'0'); if (!meses[k]) meses[k] = { anio:d.getFullYear(), mes:d.getMonth(), ingresos:0, gastos:0 }; meses[k][tipo] += aUSD(item.monto, monedaDe(item)); }); }
       agrupar(ingresos, 'ingresos'); agrupar(gastos, 'gastos');
       const claves = Object.keys(meses).sort().reverse();
       if (!claves.length) { cont.innerHTML = ''; return; }
-      cont.innerHTML = claves.map(k => {
-        const m = meses[k]; const bal = m.ingresos - m.gastos;
-        return `<div class="card"><div class="mes-titulo">${MESES[m.mes]} ${m.anio} <span style="font-size:12px;color:#94a3b8;font-weight:normal;">(US$)</span></div><div class="fila"><span>Ingresos</span><span class="verde">${fmtUSD(m.ingresos)}</span></div><div class="fila"><span>Gastos</span><span class="rojo">${fmtUSD(m.gastos)}</span></div><div class="fila balance"><span>Balance</span><span class="${bal>=0?'verde':'rojo'}">${fmtUSD(bal)}</span></div></div>`;
-      }).join('');
+      cont.innerHTML = claves.map(k => { const m = meses[k]; const bal = m.ingresos - m.gastos; return `<div class="card"><div class="mes-titulo">${MESES[m.mes]} ${m.anio} <span style="font-size:12px;color:#94a3b8;font-weight:normal;">(US$)</span></div><div class="fila"><span>Ingresos</span><span class="verde">${fmtUSD(m.ingresos)}</span></div><div class="fila"><span>Gastos</span><span class="rojo">${fmtUSD(m.gastos)}</span></div><div class="fila balance"><span>Balance</span><span class="${bal>=0?'verde':'rojo'}">${fmtUSD(bal)}</span></div></div>`; }).join('');
     }
-
     function cambiarTipoDolar(t) { tipoDolar = t; localStorage.setItem('tipoDolar', t); cargarCotizaciones(); }
-
     async function cargarCotizaciones() {
       try {
-        const [dRes, eRes] = await Promise.all([
-          fetch('https://dolarapi.com/v1/dolares/' + tipoDolar),
-          fetch('https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD')
-        ]);
-        const d = await dRes.json();
-        const e = await eRes.json();
+        const [dRes, eRes] = await Promise.all([ fetch('https://dolarapi.com/v1/dolares/' + tipoDolar), fetch('https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD') ]);
+        const d = await dRes.json(); const e = await eRes.json();
         cotiz = { usdArs: d.venta, eurUsd: e.rates.USD, fecha: new Date().toLocaleDateString('es-AR') };
         localStorage.setItem('cotizaciones', JSON.stringify(cotiz));
       } catch (err) { /* sin internet: usa la última guardada */ }
       actualizarInicio();
     }
 
-    // Defaults de moneda y fecha
     Object.keys(DEF_MONEDA).forEach(id => { const el = document.getElementById(id); if (el) el.value = DEF_MONEDA[id]; });
     ['g-fecha','i-fecha','a-fecha','inv-fecha'].forEach(id => { const el = document.getElementById(id); if (el) el.value = hoyISO(); });
-
-    render(); renderIngresos(); renderAhorros(); renderInversiones();
-    cargarCotizaciones();
+    render(); renderIngresos(); renderAhorros(); renderInversiones(); cargarCotizaciones();
   </script>
 </body>
 </html>
