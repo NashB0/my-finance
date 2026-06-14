@@ -50,29 +50,21 @@
 </head>
 <body>
 
-  <!-- INICIO -->
   <div class="seccion activa" id="seccion-inicio">
     <h1>🏠 Inicio</h1>
     <div id="patrimonio"></div>
     <div id="resumen-mensual"></div>
   </div>
 
-  <!-- INGRESOS -->
   <div class="seccion" id="seccion-ingresos">
     <h1>💰 Ingresos</h1>
     <div class="card">
-      <label>Monto</label>
-      <input type="number" id="i-monto" placeholder="0" inputmode="decimal">
-      <label>Moneda</label>
-      <select id="i-moneda"><option value="ARS">Peso (AR$)</option><option value="USD">Dólar (US$)</option><option value="EUR">Euro (€)</option></select>
-      <label>Categoría</label>
-      <select id="i-categoria"><option>Sueldo</option><option>Freelance</option><option>Ventas</option><option>Intereses</option><option>Regalo</option><option>Otros</option></select>
-      <label>Medio</label>
-      <select id="i-medio"><option>Mercado Pago</option><option>BBVA</option><option>Galicia</option><option>Santander</option><option>Nación</option><option>Wise</option><option>Efectivo</option></select>
-      <label>Nota</label>
-      <input type="text" id="i-nota" placeholder="Opcional">
-      <label>Fecha</label>
-      <input type="date" id="i-fecha">
+      <label>Monto</label><input type="number" id="i-monto" placeholder="0" inputmode="decimal">
+      <label>Moneda</label><select id="i-moneda"><option value="ARS">Peso (AR$)</option><option value="USD">Dólar (US$)</option><option value="EUR">Euro (€)</option></select>
+      <label>Categoría</label><select id="i-categoria"><option>Sueldo</option><option>Freelance</option><option>Ventas</option><option>Intereses</option><option>Regalo</option><option>Otros</option></select>
+      <label>Medio</label><select id="i-medio"><option>Mercado Pago</option><option>BBVA</option><option>Galicia</option><option>Santander</option><option>Nación</option><option>Wise</option><option>Efectivo</option></select>
+      <label>Nota</label><input type="text" id="i-nota" placeholder="Opcional">
+      <label>Fecha</label><input type="date" id="i-fecha">
       <button id="btn-ingreso" onclick="agregarIngreso()">Agregar ingreso</button>
       <button id="cancel-ingreso" class="btn-cancelar" onclick="cancelarEdicionIngreso()" style="display:none;">Cancelar edición</button>
     </div>
@@ -80,24 +72,17 @@
     <div id="i-lista"></div>
   </div>
 
-  <!-- GASTOS -->
   <div class="seccion" id="seccion-gastos">
     <h1>💸 Gastos</h1>
     <div class="card">
       <button type="button" class="btn-voz" id="btn-voz" onclick="hablarGasto()">🎤 Hablar</button>
       <div id="voz-result"></div>
-      <label>Monto</label>
-      <input type="number" id="monto" placeholder="0" inputmode="decimal">
-      <label>Moneda</label>
-      <select id="g-moneda"><option value="ARS">Peso (AR$)</option><option value="USD">Dólar (US$)</option><option value="EUR">Euro (€)</option></select>
-      <label>Categoría</label>
-      <select id="categoria"><option>Comida</option><option>Transporte</option><option>Servicios</option><option>Ocio</option><option>Salud</option><option>Otros</option></select>
-      <label>Medio de pago</label>
-      <select id="medio"><option>Mercado Pago</option><option>BBVA</option><option>Galicia</option><option>Santander</option><option>Nación</option><option>Wise</option><option>Efectivo</option></select>
-      <label>Nota</label>
-      <input type="text" id="nota" placeholder="Opcional">
-      <label>Fecha</label>
-      <input type="date" id="g-fecha">
+      <label>Monto</label><input type="number" id="monto" placeholder="0" inputmode="decimal">
+      <label>Moneda</label><select id="g-moneda"><option value="ARS">Peso (AR$)</option><option value="USD">Dólar (US$)</option><option value="EUR">Euro (€)</option></select>
+      <label>Categoría</label><select id="categoria"><option>Comida</option><option>Transporte</option><option>Servicios</option><option>Ocio</option><option>Salud</option><option>Otros</option></select>
+      <label>Medio de pago</label><select id="medio"><option>Mercado Pago</option><option>BBVA</option><option>Galicia</option><option>Santander</option><option>Nación</option><option>Wise</option><option>Efectivo</option></select>
+      <label>Nota</label><input type="text" id="nota" placeholder="Opcional">
+      <label>Fecha</label><input type="date" id="g-fecha">
       <button id="btn-gasto" onclick="agregarGasto()">Agregar gasto</button>
       <button id="cancel-gasto" class="btn-cancelar" onclick="cancelarEdicionGasto()" style="display:none;">Cancelar edición</button>
     </div>
@@ -105,20 +90,14 @@
     <div id="lista"></div>
   </div>
 
-  <!-- AHORROS -->
   <div class="seccion" id="seccion-ahorros">
     <h1>🏦 Ahorros</h1>
     <div class="card">
-      <label>Monto</label>
-      <input type="number" id="a-monto" placeholder="0" inputmode="decimal">
-      <label>Moneda</label>
-      <select id="a-moneda"><option value="ARS">Peso (AR$)</option><option value="USD">Dólar (US$)</option><option value="EUR">Euro (€)</option></select>
-      <label>Dónde</label>
-      <select id="a-donde"><option>Caja de ahorro</option><option>Plazo fijo</option><option>Dólares</option><option>Efectivo</option><option>Mercado Pago</option><option>Otros</option></select>
-      <label>Nota</label>
-      <input type="text" id="a-nota" placeholder="Opcional">
-      <label>Fecha</label>
-      <input type="date" id="a-fecha">
+      <label>Monto</label><input type="number" id="a-monto" placeholder="0" inputmode="decimal">
+      <label>Moneda</label><select id="a-moneda"><option value="ARS">Peso (AR$)</option><option value="USD">Dólar (US$)</option><option value="EUR">Euro (€)</option></select>
+      <label>Dónde</label><select id="a-donde"><option>Caja de ahorro</option><option>Plazo fijo</option><option>Dólares</option><option>Efectivo</option><option>Mercado Pago</option><option>Otros</option></select>
+      <label>Nota</label><input type="text" id="a-nota" placeholder="Opcional">
+      <label>Fecha</label><input type="date" id="a-fecha">
       <button id="btn-ahorro" onclick="agregarAhorro()">Agregar ahorro</button>
       <button id="cancel-ahorro" class="btn-cancelar" onclick="cancelarEdicionAhorro()" style="display:none;">Cancelar edición</button>
     </div>
@@ -126,22 +105,15 @@
     <div id="a-lista"></div>
   </div>
 
-  <!-- INVERSIONES -->
   <div class="seccion" id="seccion-inversiones">
     <h1>📈 Inversiones</h1>
     <div class="card">
-      <label>Monto</label>
-      <input type="number" id="inv-monto" placeholder="0" inputmode="decimal">
-      <label>Moneda</label>
-      <select id="inv-moneda"><option value="ARS">Peso (AR$)</option><option value="USD">Dólar (US$)</option><option value="EUR">Euro (€)</option></select>
-      <label>Tipo</label>
-      <select id="inv-tipo"><option>Acciones</option><option>CEDEARs</option><option>Cripto</option><option>Bonos</option><option>Fondos</option><option>Plazo fijo</option><option>Otros</option></select>
-      <label>Nombre/Ticker</label>
-      <input type="text" id="inv-ticker" placeholder="Ej: AAPL, Bitcoin, AL30">
-      <label>Nota</label>
-      <input type="text" id="inv-nota" placeholder="Opcional">
-      <label>Fecha</label>
-      <input type="date" id="inv-fecha">
+      <label>Monto</label><input type="number" id="inv-monto" placeholder="0" inputmode="decimal">
+      <label>Moneda</label><select id="inv-moneda"><option value="ARS">Peso (AR$)</option><option value="USD">Dólar (US$)</option><option value="EUR">Euro (€)</option></select>
+      <label>Tipo</label><select id="inv-tipo"><option>Acciones</option><option>CEDEARs</option><option>Cripto</option><option>Bonos</option><option>Fondos</option><option>Plazo fijo</option><option>Otros</option></select>
+      <label>Nombre/Ticker</label><input type="text" id="inv-ticker" placeholder="Ej: AAPL, Bitcoin, AL30">
+      <label>Nota</label><input type="text" id="inv-nota" placeholder="Opcional">
+      <label>Fecha</label><input type="date" id="inv-fecha">
       <button id="btn-inversion" onclick="agregarInversion()">Agregar inversión</button>
       <button id="cancel-inversion" class="btn-cancelar" onclick="cancelarEdicionInversion()" style="display:none;">Cancelar edición</button>
     </div>
@@ -159,6 +131,7 @@
 
   <script>
     const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const MESNUM = { enero:0, febrero:1, marzo:2, abril:3, mayo:4, junio:5, julio:6, agosto:7, septiembre:8, setiembre:8, octubre:9, noviembre:10, diciembre:11 };
     const DEF_MONEDA = { 'g-moneda':'ARS', 'i-moneda':'EUR', 'a-moneda':'ARS', 'inv-moneda':'USD' };
 
     let cotiz = JSON.parse(localStorage.getItem('cotizaciones') || 'null');
@@ -170,8 +143,9 @@
     function aUSD(monto, moneda) { if (!cotiz) return 0; if (moneda === 'USD') return monto; if (moneda === 'EUR') return monto * cotiz.eurUsd; return monto / cotiz.usdArs; }
 
     function hoyISO() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+    function isoDeFecha(d) { return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
     function fechaDe(item) { if (item.fechaISO) { const p = item.fechaISO.split('-').map(Number); return new Date(p[0], p[1]-1, p[2]); } return new Date(item.id); }
-    function isoDe(item) { const d = fechaDe(item); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+    function isoDe(item) { return isoDeFecha(fechaDe(item)); }
     function leerFecha(idCampo) { const iso = document.getElementById(idCampo).value || hoyISO(); const p = iso.split('-').map(Number); return { fechaISO: iso, fecha: new Date(p[0], p[1]-1, p[2]).toLocaleDateString('es-AR') }; }
     function totalStr(items) { const sums = {}; items.forEach(x => { const m = monedaDe(x); sums[m] = (sums[m]||0) + x.monto; }); const parts = ['ARS','USD','EUR'].filter(m => sums[m]).map(m => simbolo(m) + sums[m].toLocaleString('es-AR')); return parts.length ? parts.join(' · ') : '$0'; }
 
@@ -200,8 +174,19 @@
     const VOZ_COMERCIOS = [
       { k:['la anonima','anonima'], n:'La Anónima' }, { k:['coto'], n:'Coto' }, { k:['carrefour'], n:'Carrefour' },
       { k:['jumbo'], n:'Jumbo' }, { k:['vea'], n:'Vea' }, { k:['changomas','chango mas'], n:'ChangoMás' },
-      { k:['farmacity'], n:'Farmacity' }, { k:['ypf'], n:'YPF' }, { k:['shell'], n:'Shell' }
+      { k:['farmacity'], n:'Farmacity' }, { k:['ypf'], n:'YPF' }, { k:['shell'], n:'Shell' },
+      { k:['pedidos ya','pedidosya'], n:'Pedidos Ya' }, { k:['rappi'], n:'Rappi' }
     ];
+
+    function parseFechaVoz(t) {
+      let m = t.match(/(\d{1,2})\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)(?:\s+de\s+(\d{4}))?/);
+      if (m) { const dia = parseInt(m[1],10), mes = MESNUM[m[2]], anio = m[3] ? parseInt(m[3],10) : new Date().getFullYear(); return { iso: anio+'-'+String(mes+1).padStart(2,'0')+'-'+String(dia).padStart(2,'0'), str: m[0] }; }
+      m = t.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
+      if (m) { const dia = parseInt(m[1],10), mes = parseInt(m[2],10)-1; let anio = m[3] ? parseInt(m[3],10) : new Date().getFullYear(); if (anio < 100) anio += 2000; return { iso: anio+'-'+String(mes+1).padStart(2,'0')+'-'+String(dia).padStart(2,'0'), str: m[0] }; }
+      if (/\bayer\b/.test(t)) { const d = new Date(); d.setDate(d.getDate()-1); return { iso: isoDeFecha(d), str: 'ayer' }; }
+      if (/\bhoy\b/.test(t)) { return { iso: hoyISO(), str: 'hoy' }; }
+      return null;
+    }
 
     function hablarGasto() {
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -219,27 +204,43 @@
 
     function interpretarGasto(texto) {
       document.getElementById('voz-result').textContent = 'Entendí: "' + texto + '" — revisá y tocá Agregar gasto.';
-      const t = norm(texto);
+      let t = norm(texto);
 
-      const mNum = t.match(/(\d[\d.,]*\d|\d)/);
-      if (mNum) { const n = parseInt(mNum[0].replace(/[.,]/g, ''), 10); if (n > 0) document.getElementById('monto').value = n; }
+      // Fecha (y la saco del texto para no confundirla con el monto)
+      const fp = parseFechaVoz(t);
+      if (fp) { document.getElementById('g-fecha').value = fp.iso; t = t.replace(fp.str, ' '); }
+      else { document.getElementById('g-fecha').value = hoyISO(); }
 
+      // Moneda
       let moneda = 'ARS';
       if (tiene(t,'dolar') || tiene(t,'dolares') || tiene(t,'usd')) moneda = 'USD';
       else if (tiene(t,'euro') || tiene(t,'euros') || tiene(t,'eur')) moneda = 'EUR';
       document.getElementById('g-moneda').value = moneda;
 
+      // Monto
+      const mNum = t.match(/(\d[\d.,]*\d|\d)/);
+      if (mNum) { const n = parseInt(mNum[0].replace(/[.,]/g,''),10); if (n > 0) document.getElementById('monto').value = n; }
+
+      // Medio y categoría
       for (const m of VOZ_MEDIOS) { if (m.k.some(k => tiene(t, k))) { document.getElementById('medio').value = m.v; break; } }
       for (const c of VOZ_CATS) { if (c.k.some(k => tiene(t, k))) { document.getElementById('categoria').value = c.v; break; } }
 
+      // Nota: comercio conocido, o lo que sigue a " en " sin la fecha ni el medio
       let nota = '';
       for (const com of VOZ_COMERCIOS) { if (com.k.some(k => tiene(t, k))) { nota = com.n; break; } }
-      if (!nota) { const mEn = texto.match(/ en (.+?)(?: y | con | pague| pagué|$)/i); if (mEn) nota = mEn[1].trim(); }
-      if (nota) document.getElementById('nota').value = nota;
-
-      const f = document.getElementById('g-fecha');
-      if (tiene(t,'ayer')) { const d = new Date(); d.setDate(d.getDate()-1); f.value = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
-      else { f.value = hoyISO(); }
+      if (!nota) {
+        const mEn = texto.match(/ en (.+)/i);
+        if (mEn) {
+          nota = mEn[1]
+            .replace(/\s*(el\s+)?\d{1,2}\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)(\s+de\s+\d{4})?\s*$/i, '')
+            .replace(/\s*\d{1,2}\/\d{1,2}(\/\d{2,4})?\s*$/, '')
+            .replace(/\s*(hoy|ayer)\s*$/i, '')
+            .replace(/\s*y\s+pagu[eé].*$/i, '')
+            .replace(/\s*con\s+(mi\s+)?(tarjeta|cuenta).*$/i, '')
+            .trim();
+        }
+      }
+      document.getElementById('nota').value = nota;
     }
 
     // ===== GASTOS =====
@@ -464,7 +465,7 @@
         const d = await dRes.json(); const e = await eRes.json();
         cotiz = { usdArs: d.venta, eurUsd: e.rates.USD, fecha: new Date().toLocaleDateString('es-AR') };
         localStorage.setItem('cotizaciones', JSON.stringify(cotiz));
-      } catch (err) { /* sin internet: usa la última guardada */ }
+      } catch (err) {}
       actualizarInicio();
     }
 
