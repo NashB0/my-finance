@@ -139,6 +139,7 @@
 
     function simbolo(m) { return m === 'USD' ? 'US$' : m === 'EUR' ? '€' : 'AR$'; }
     function monedaDe(x) { return x.moneda || 'ARS'; }
+    function fmtMonto(n) { return n.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }); }
     function fmtUSD(n) { return (n < 0 ? '-US$' : 'US$') + Math.abs(n).toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2}); }
     function aUSD(monto, moneda) { if (!cotiz) return 0; if (moneda === 'USD') return monto; if (moneda === 'EUR') return monto * cotiz.eurUsd; return monto / cotiz.usdArs; }
 
@@ -147,7 +148,7 @@
     function fechaDe(item) { if (item.fechaISO) { const p = item.fechaISO.split('-').map(Number); return new Date(p[0], p[1]-1, p[2]); } return new Date(item.id); }
     function isoDe(item) { return isoDeFecha(fechaDe(item)); }
     function leerFecha(idCampo) { const iso = document.getElementById(idCampo).value || hoyISO(); const p = iso.split('-').map(Number); return { fechaISO: iso, fecha: new Date(p[0], p[1]-1, p[2]).toLocaleDateString('es-AR') }; }
-    function totalStr(items) { const sums = {}; items.forEach(x => { const m = monedaDe(x); sums[m] = (sums[m]||0) + x.monto; }); const parts = ['ARS','USD','EUR'].filter(m => sums[m]).map(m => simbolo(m) + sums[m].toLocaleString('es-AR')); return parts.length ? parts.join(' · ') : '$0'; }
+    function totalStr(items) { const sums = {}; items.forEach(x => { const m = monedaDe(x); sums[m] = (sums[m]||0) + x.monto; }); const parts = ['ARS','USD','EUR'].filter(m => sums[m]).map(m => simbolo(m) + fmtMonto(sums[m])); return parts.length ? parts.join(' · ') : '$0'; }
 
     function mostrar(nombre, boton) { document.querySelectorAll('.seccion').forEach(s => s.classList.remove('activa')); document.getElementById('seccion-'+nombre).classList.add('activa'); document.querySelectorAll('.nav button').forEach(b => b.classList.remove('activa')); boton.classList.add('activa'); window.scrollTo(0, 0); }
 
@@ -211,32 +212,40 @@
       if (fp) { document.getElementById('g-fecha').value = fp.iso; t = t.replace(fp.str, ' '); }
       else { document.getElementById('g-fecha').value = hoyISO(); }
 
-      // Moneda
+      // Moneda — por palabra o por símbolo (€ / us$ / $)
       let moneda = 'ARS';
-      if (tiene(t,'dolar') || tiene(t,'dolares') || tiene(t,'usd')) moneda = 'USD';
-      else if (tiene(t,'euro') || tiene(t,'euros') || tiene(t,'eur')) moneda = 'EUR';
+      if (texto.includes('€') || tiene(t,'euro') || tiene(t,'euros') || tiene(t,'eur')) moneda = 'EUR';
+      else if (/us\$|u\$s/.test(t) || tiene(t,'dolar') || tiene(t,'dolares') || tiene(t,'usd')) moneda = 'USD';
       document.getElementById('g-moneda').value = moneda;
 
-      // Monto
-      const mNum = t.match(/(\d[\d.,]*\d|\d)/);
-      if (mNum) { const n = parseInt(mNum[0].replace(/[.,]/g,''),10); if (n > 0) document.getElementById('monto').value = n; }
+      // Monto — "82 con 53" => 82.53 ; si no, primer número entero
+      let monto = null;
+      const mDec = t.match(/(\d[\d.]*)\s+con\s+(\d{1,2})\b/);
+      if (mDec) { const ent = mDec[1].replace(/[.,]/g,''); monto = parseFloat(ent + '.' + mDec[2].padStart(2,'0')); }
+      else { const mNum = t.match(/(\d[\d.,]*\d|\d)/); if (mNum) monto = parseInt(mNum[0].replace(/[.,]/g,''),10); }
+      if (monto && monto > 0) document.getElementById('monto').value = monto;
 
       // Medio y categoría
       for (const m of VOZ_MEDIOS) { if (m.k.some(k => tiene(t, k))) { document.getElementById('medio').value = m.v; break; } }
       for (const c of VOZ_CATS) { if (c.k.some(k => tiene(t, k))) { document.getElementById('categoria').value = c.v; break; } }
 
-      // Nota: comercio conocido, o lo que sigue a " en " sin la fecha ni el medio
+      // Nota: comercio conocido, o lo que sigue a " en " sin fecha/medio/monto
       let nota = '';
       for (const com of VOZ_COMERCIOS) { if (com.k.some(k => tiene(t, k))) { nota = com.n; break; } }
       if (!nota) {
         const mEn = texto.match(/ en (.+)/i);
         if (mEn) {
           nota = mEn[1]
-            .replace(/\s*(el\s+)?\d{1,2}\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)(\s+de\s+\d{4})?\s*$/i, '')
-            .replace(/\s*\d{1,2}\/\d{1,2}(\/\d{2,4})?\s*$/, '')
-            .replace(/\s*(hoy|ayer)\s*$/i, '')
+            .replace(/\s*(el\s+)?\d{1,2}\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)(\s+de\s+\d{4})?\s*/i, ' ')
+            .replace(/\s*\d{1,2}\/\d{1,2}(\/\d{2,4})?\s*/, ' ')
+            .replace(/\s*(hoy|ayer)\s*/i, ' ')
+            .replace(/\d[\d.,]*\s+con\s+\d{1,2}\b/gi, ' ')
+            .replace(/[€$]/g, ' ')
+            .replace(/\s*\d[\d.,]*\s*/g, ' ')
             .replace(/\s*y\s+pagu[eé].*$/i, '')
             .replace(/\s*con\s+(mi\s+)?(tarjeta|cuenta).*$/i, '')
+            .replace(/\s+(euros?|dolares?|pesos?)\s*/gi, ' ')
+            .replace(/\s+/g, ' ')
             .trim();
         }
       }
@@ -281,7 +290,7 @@
       const lista = document.getElementById('lista');
       document.getElementById('total').textContent = 'Total: ' + totalStr(gastos);
       if (gastos.length === 0) { lista.innerHTML = '<div class="vacio">No hay gastos cargados todavía</div>'; }
-      else { lista.innerHTML = gastos.map(g => `<div class="gasto"><div class="gasto-info"><strong>${g.categoria}</strong><small>${g.medio} · ${g.fecha}${g.nota ? ' · ' + g.nota : ''}</small></div><div style="display:flex;align-items:center;gap:4px;"><span class="gasto-monto">${simbolo(monedaDe(g))}${g.monto.toLocaleString('es-AR')}</span><button class="borrar" onclick="editarGasto(${g.id})">✏️</button><button class="borrar" onclick="borrarGasto(${g.id})">🗑️</button></div></div>`).join(''); }
+      else { lista.innerHTML = gastos.map(g => `<div class="gasto"><div class="gasto-info"><strong>${g.categoria}</strong><small>${g.medio} · ${g.fecha}${g.nota ? ' · ' + g.nota : ''}</small></div><div style="display:flex;align-items:center;gap:4px;"><span class="gasto-monto">${simbolo(monedaDe(g))}${fmtMonto(g.monto)}</span><button class="borrar" onclick="editarGasto(${g.id})">✏️</button><button class="borrar" onclick="borrarGasto(${g.id})">🗑️</button></div></div>`).join(''); }
       actualizarInicio();
     }
 
@@ -322,7 +331,7 @@
       const lista = document.getElementById('i-lista');
       document.getElementById('i-total').textContent = 'Total: ' + totalStr(ingresos);
       if (ingresos.length === 0) { lista.innerHTML = '<div class="vacio">No hay ingresos cargados todavía</div>'; }
-      else { lista.innerHTML = ingresos.map(i => `<div class="gasto"><div class="gasto-info"><strong>${i.categoria}</strong><small>${i.medio} · ${i.fecha}${i.nota ? ' · ' + i.nota : ''}</small></div><div style="display:flex;align-items:center;gap:4px;"><span class="ingreso-monto">${simbolo(monedaDe(i))}${i.monto.toLocaleString('es-AR')}</span><button class="borrar" onclick="editarIngreso(${i.id})">✏️</button><button class="borrar" onclick="borrarIngreso(${i.id})">🗑️</button></div></div>`).join(''); }
+      else { lista.innerHTML = ingresos.map(i => `<div class="gasto"><div class="gasto-info"><strong>${i.categoria}</strong><small>${i.medio} · ${i.fecha}${i.nota ? ' · ' + i.nota : ''}</small></div><div style="display:flex;align-items:center;gap:4px;"><span class="ingreso-monto">${simbolo(monedaDe(i))}${fmtMonto(i.monto)}</span><button class="borrar" onclick="editarIngreso(${i.id})">✏️</button><button class="borrar" onclick="borrarIngreso(${i.id})">🗑️</button></div></div>`).join(''); }
       actualizarInicio();
     }
 
@@ -362,7 +371,7 @@
       const lista = document.getElementById('a-lista');
       document.getElementById('a-total').textContent = 'Total ahorrado: ' + totalStr(ahorros);
       if (ahorros.length === 0) { lista.innerHTML = '<div class="vacio">No hay ahorros cargados todavía</div>'; }
-      else { lista.innerHTML = ahorros.map(a => `<div class="gasto"><div class="gasto-info"><strong>${a.donde}</strong><small>${a.fecha}${a.nota ? ' · ' + a.nota : ''}</small></div><div style="display:flex;align-items:center;gap:4px;"><span class="ahorro-monto">${simbolo(monedaDe(a))}${a.monto.toLocaleString('es-AR')}</span><button class="borrar" onclick="editarAhorro(${a.id})">✏️</button><button class="borrar" onclick="borrarAhorro(${a.id})">🗑️</button></div></div>`).join(''); }
+      else { lista.innerHTML = ahorros.map(a => `<div class="gasto"><div class="gasto-info"><strong>${a.donde}</strong><small>${a.fecha}${a.nota ? ' · ' + a.nota : ''}</small></div><div style="display:flex;align-items:center;gap:4px;"><span class="ahorro-monto">${simbolo(monedaDe(a))}${fmtMonto(a.monto)}</span><button class="borrar" onclick="editarAhorro(${a.id})">✏️</button><button class="borrar" onclick="borrarAhorro(${a.id})">🗑️</button></div></div>`).join(''); }
       actualizarInicio();
     }
 
@@ -403,7 +412,7 @@
       const lista = document.getElementById('inv-lista');
       document.getElementById('inv-total').textContent = 'Total invertido: ' + totalStr(inversiones);
       if (inversiones.length === 0) { lista.innerHTML = '<div class="vacio">No hay inversiones cargadas todavía</div>'; }
-      else { lista.innerHTML = inversiones.map(inv => `<div class="gasto"><div class="gasto-info"><strong>${inv.tipo}${inv.ticker ? ' · ' + inv.ticker : ''}</strong><small>${inv.fecha}${inv.nota ? ' · ' + inv.nota : ''}</small></div><div style="display:flex;align-items:center;gap:4px;"><span class="inversion-monto">${simbolo(monedaDe(inv))}${inv.monto.toLocaleString('es-AR')}</span><button class="borrar" onclick="editarInversion(${inv.id})">✏️</button><button class="borrar" onclick="borrarInversion(${inv.id})">🗑️</button></div></div>`).join(''); }
+      else { lista.innerHTML = inversiones.map(inv => `<div class="gasto"><div class="gasto-info"><strong>${inv.tipo}${inv.ticker ? ' · ' + inv.ticker : ''}</strong><small>${inv.fecha}${inv.nota ? ' · ' + inv.nota : ''}</small></div><div style="display:flex;align-items:center;gap:4px;"><span class="inversion-monto">${simbolo(monedaDe(inv))}${fmtMonto(inv.monto)}</span><button class="borrar" onclick="editarInversion(${inv.id})">✏️</button><button class="borrar" onclick="borrarInversion(${inv.id})">🗑️</button></div></div>`).join(''); }
       actualizarInicio();
     }
 
