@@ -17,7 +17,7 @@
     .btn-cancelar { background: #475569; margin-top: 10px; }
     .btn-voz { background: #8b5cf6; margin-bottom: 12px; }
     .btn-voz:active { background: #7c3aed; }
-    #voz-result { font-size: 12px; color: #94a3b8; margin: -4px 0 12px; min-height: 14px; }
+    .voz-result { font-size: 12px; color: #94a3b8; margin: -4px 0 12px; min-height: 14px; }
     .gasto { background: #1e293b; border-radius: 8px; padding: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
     .gasto-info { font-size: 14px; }
     .gasto-info small { color: #94a3b8; display: block; }
@@ -59,6 +59,8 @@
   <div class="seccion" id="seccion-ingresos">
     <h1>💰 Ingresos</h1>
     <div class="card">
+      <button type="button" class="btn-voz" id="btn-voz-i" onclick="escuchar(VOZ_CFG.ingreso)">🎤 Hablar</button>
+      <div class="voz-result" id="voz-result-i"></div>
       <label>Monto</label><input type="number" id="i-monto" placeholder="0" inputmode="decimal">
       <label>Moneda</label><select id="i-moneda"><option value="ARS">Peso (AR$)</option><option value="USD">Dólar (US$)</option><option value="EUR">Euro (€)</option></select>
       <label>Categoría</label><select id="i-categoria"><option>Sueldo</option><option>Freelance</option><option>Ventas</option><option>Intereses</option><option>Regalo</option><option>Otros</option></select>
@@ -75,8 +77,8 @@
   <div class="seccion" id="seccion-gastos">
     <h1>💸 Gastos</h1>
     <div class="card">
-      <button type="button" class="btn-voz" id="btn-voz" onclick="hablarGasto()">🎤 Hablar</button>
-      <div id="voz-result"></div>
+      <button type="button" class="btn-voz" id="btn-voz" onclick="escuchar(VOZ_CFG.gasto)">🎤 Hablar</button>
+      <div class="voz-result" id="voz-result"></div>
       <label>Monto</label><input type="number" id="monto" placeholder="0" inputmode="decimal">
       <label>Moneda</label><select id="g-moneda"><option value="ARS">Peso (AR$)</option><option value="USD">Dólar (US$)</option><option value="EUR">Euro (€)</option></select>
       <label>Categoría</label><select id="categoria"><option>Comida</option><option>Transporte</option><option>Servicios</option><option>Ocio</option><option>Salud</option><option>Otros</option></select>
@@ -93,6 +95,8 @@
   <div class="seccion" id="seccion-ahorros">
     <h1>🏦 Ahorros</h1>
     <div class="card">
+      <button type="button" class="btn-voz" id="btn-voz-a" onclick="escuchar(VOZ_CFG.ahorro)">🎤 Hablar</button>
+      <div class="voz-result" id="voz-result-a"></div>
       <label>Monto</label><input type="number" id="a-monto" placeholder="0" inputmode="decimal">
       <label>Moneda</label><select id="a-moneda"><option value="ARS">Peso (AR$)</option><option value="USD">Dólar (US$)</option><option value="EUR">Euro (€)</option></select>
       <label>Dónde</label><select id="a-donde"><option>Caja de ahorro</option><option>Plazo fijo</option><option>Dólares</option><option>Efectivo</option><option>Mercado Pago</option><option>Otros</option></select>
@@ -108,6 +112,8 @@
   <div class="seccion" id="seccion-inversiones">
     <h1>📈 Inversiones</h1>
     <div class="card">
+      <button type="button" class="btn-voz" id="btn-voz-inv" onclick="escuchar(VOZ_CFG.inversion)">🎤 Hablar</button>
+      <div class="voz-result" id="voz-result-inv"></div>
       <label>Monto</label><input type="number" id="inv-monto" placeholder="0" inputmode="decimal">
       <label>Moneda</label><select id="inv-moneda"><option value="ARS">Peso (AR$)</option><option value="USD">Dólar (US$)</option><option value="EUR">Euro (€)</option></select>
       <label>Tipo</label><select id="inv-tipo"><option>Acciones</option><option>CEDEARs</option><option>Cripto</option><option>Bonos</option><option>Fondos</option><option>Plazo fijo</option><option>Otros</option></select>
@@ -152,7 +158,7 @@
 
     function mostrar(nombre, boton) { document.querySelectorAll('.seccion').forEach(s => s.classList.remove('activa')); document.getElementById('seccion-'+nombre).classList.add('activa'); document.querySelectorAll('.nav button').forEach(b => b.classList.remove('activa')); boton.classList.add('activa'); window.scrollTo(0, 0); }
 
-    // ===== ENTRADA POR VOZ (Gastos) =====
+    // ===== ENTRADA POR VOZ (común a las 4 pantallas) =====
     function norm(s) { return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
     function tiene(t, palabra) { const esc = palabra.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); return new RegExp('(^|[^a-z0-9])' + esc + '([^a-z0-9]|$)').test(t); }
 
@@ -172,12 +178,41 @@
       { v:'Ocio', k:['ocio','cine','salida','boliche','juego','videojuego','steam','libro','viaje','hotel','teatro','recital'] },
       { v:'Salud', k:['salud','farmacia','farmacity','remedio','medico','doctor','prepaga','dentista','gimnasio','gym'] }
     ];
+    const VOZ_CATS_ING = [
+      { v:'Sueldo', k:['sueldo','salario','paga','aguinaldo','quincena'] },
+      { v:'Freelance', k:['freelance','free lance','proyecto','cliente','changa'] },
+      { v:'Ventas', k:['venta','ventas','vendi','vendido'] },
+      { v:'Intereses', k:['interes','intereses','renta','dividendo','dividendos','plazo fijo'] },
+      { v:'Regalo', k:['regalo','regalaron'] }
+    ];
+    const VOZ_DONDE = [
+      { v:'Caja de ahorro', k:['caja de ahorro','caja','banco','cuenta'] },
+      { v:'Plazo fijo', k:['plazo fijo','plazo'] },
+      { v:'Dólares', k:['dolar','dolares','verdes'] },
+      { v:'Efectivo', k:['efectivo','cash','colchon'] },
+      { v:'Mercado Pago', k:['mercado pago','mercadopago'] }
+    ];
+    const VOZ_TIPO_INV = [
+      { v:'CEDEARs', k:['cedear','cedears'] },
+      { v:'Cripto', k:['cripto','crypto','bitcoin','btc','ethereum','eth','dolar cripto','usdt'] },
+      { v:'Bonos', k:['bono','bonos','al30','gd30'] },
+      { v:'Fondos', k:['fondo','fondos','fci'] },
+      { v:'Plazo fijo', k:['plazo fijo','plazo'] },
+      { v:'Acciones', k:['accion','acciones'] }
+    ];
     const VOZ_COMERCIOS = [
       { k:['la anonima','anonima'], n:'La Anónima' }, { k:['coto'], n:'Coto' }, { k:['carrefour'], n:'Carrefour' },
       { k:['jumbo'], n:'Jumbo' }, { k:['vea'], n:'Vea' }, { k:['changomas','chango mas'], n:'ChangoMás' },
       { k:['farmacity'], n:'Farmacity' }, { k:['ypf'], n:'YPF' }, { k:['shell'], n:'Shell' },
       { k:['pedidos ya','pedidosya'], n:'Pedidos Ya' }, { k:['rappi'], n:'Rappi' }
     ];
+
+    const VOZ_CFG = {
+      gasto:     { btnId:'btn-voz',     resultId:'voz-result',     monto:'monto',     moneda:'g-moneda',   medio:'medio',   selProp:'categoria',   dictProp:VOZ_CATS,     nota:'nota',     fecha:'g-fecha',   comercios:true,  btnLabel:'Agregar gasto' },
+      ingreso:   { btnId:'btn-voz-i',   resultId:'voz-result-i',   monto:'i-monto',   moneda:'i-moneda',   medio:'i-medio', selProp:'i-categoria', dictProp:VOZ_CATS_ING, nota:'i-nota',   fecha:'i-fecha',   comercios:false, btnLabel:'Agregar ingreso' },
+      ahorro:    { btnId:'btn-voz-a',   resultId:'voz-result-a',   monto:'a-monto',   moneda:'a-moneda',   medio:null,      selProp:'a-donde',     dictProp:VOZ_DONDE,    nota:'a-nota',   fecha:'a-fecha',   comercios:false, btnLabel:'Agregar ahorro' },
+      inversion: { btnId:'btn-voz-inv', resultId:'voz-result-inv', monto:'inv-monto', moneda:'inv-moneda', medio:null,      selProp:'inv-tipo',    dictProp:VOZ_TIPO_INV, nota:'inv-nota', fecha:'inv-fecha', comercios:false, btnLabel:'Agregar inversión' }
+    };
 
     function parseFechaVoz(t) {
       let m = t.match(/(\d{1,2})\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)(?:\s+de\s+(\d{4}))?/);
@@ -189,67 +224,62 @@
       return null;
     }
 
-    function hablarGasto() {
+    function limpiarNota(s) {
+      return s
+        .replace(/\s*(el\s+)?\d{1,2}\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)(\s+de\s+\d{4})?\s*/i, ' ')
+        .replace(/\s*\d{1,2}\/\d{1,2}(\/\d{2,4})?\s*/, ' ')
+        .replace(/\s*(hoy|ayer)\s*/i, ' ')
+        .replace(/\d[\d.,]*\s+con\s+\d{1,2}\b/gi, ' ')
+        .replace(/[€$]/g, ' ')
+        .replace(/\s*\d[\d.,]*\s*/g, ' ')
+        .replace(/\s*y\s+pagu[eé].*$/i, '')
+        .replace(/\s*con\s+(mi\s+)?(tarjeta|cuenta).*$/i, '')
+        .replace(/\s+(euros?|dolares?|pesos?)\s*/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function escuchar(cfg) {
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SR) { alert('Tu navegador no soporta dictado por voz. Probalo en Chrome.'); return; }
       const rec = new SR();
       rec.lang = 'es-AR'; rec.interimResults = false; rec.maxAlternatives = 1;
-      const btn = document.getElementById('btn-voz');
-      document.getElementById('voz-result').textContent = '';
+      const btn = document.getElementById(cfg.btnId);
+      document.getElementById(cfg.resultId).textContent = '';
       btn.textContent = '🎤 Escuchando…';
-      rec.onresult = (e) => { interpretarGasto(e.results[0][0].transcript); };
-      rec.onerror = (e) => { document.getElementById('voz-result').textContent = '⚠️ No te escuché (' + e.error + '). Probá de nuevo.'; };
+      rec.onresult = (e) => { interpretarVoz(e.results[0][0].transcript, cfg); };
+      rec.onerror = (e) => { document.getElementById(cfg.resultId).textContent = '⚠️ No te escuché (' + e.error + '). Probá de nuevo.'; };
       rec.onend = () => { btn.textContent = '🎤 Hablar'; };
       try { rec.start(); } catch (err) { btn.textContent = '🎤 Hablar'; }
     }
 
-    function interpretarGasto(texto) {
-      document.getElementById('voz-result').textContent = 'Entendí: "' + texto + '" — revisá y tocá Agregar gasto.';
+    function interpretarVoz(texto, cfg) {
+      document.getElementById(cfg.resultId).textContent = 'Entendí: "' + texto + '" — revisá y tocá ' + cfg.btnLabel + '.';
       let t = norm(texto);
 
-      // Fecha (y la saco del texto para no confundirla con el monto)
       const fp = parseFechaVoz(t);
-      if (fp) { document.getElementById('g-fecha').value = fp.iso; t = t.replace(fp.str, ' '); }
-      else { document.getElementById('g-fecha').value = hoyISO(); }
+      if (fp) { document.getElementById(cfg.fecha).value = fp.iso; t = t.replace(fp.str, ' '); }
+      else { document.getElementById(cfg.fecha).value = hoyISO(); }
 
-      // Moneda — por palabra o por símbolo (€ / us$ / $)
       let moneda = 'ARS';
       if (texto.includes('€') || tiene(t,'euro') || tiene(t,'euros') || tiene(t,'eur')) moneda = 'EUR';
       else if (/us\$|u\$s/.test(t) || tiene(t,'dolar') || tiene(t,'dolares') || tiene(t,'usd')) moneda = 'USD';
-      document.getElementById('g-moneda').value = moneda;
+      document.getElementById(cfg.moneda).value = moneda;
 
-      // Monto — "82 con 53" => 82.53 ; si no, primer número entero
       let monto = null;
       const mDec = t.match(/(\d[\d.]*)\s+con\s+(\d{1,2})\b/);
       if (mDec) { const ent = mDec[1].replace(/[.,]/g,''); monto = parseFloat(ent + '.' + mDec[2].padStart(2,'0')); }
       else { const mNum = t.match(/(\d[\d.,]*\d|\d)/); if (mNum) monto = parseInt(mNum[0].replace(/[.,]/g,''),10); }
-      if (monto && monto > 0) document.getElementById('monto').value = monto;
+      if (monto && monto > 0) document.getElementById(cfg.monto).value = monto;
 
-      // Medio y categoría
-      for (const m of VOZ_MEDIOS) { if (m.k.some(k => tiene(t, k))) { document.getElementById('medio').value = m.v; break; } }
-      for (const c of VOZ_CATS) { if (c.k.some(k => tiene(t, k))) { document.getElementById('categoria').value = c.v; break; } }
+      if (cfg.medio) { for (const m of VOZ_MEDIOS) { if (m.k.some(k => tiene(t, k))) { document.getElementById(cfg.medio).value = m.v; break; } } }
 
-      // Nota: comercio conocido, o lo que sigue a " en " sin fecha/medio/monto
+      if (cfg.selProp && cfg.dictProp) { for (const c of cfg.dictProp) { if (c.k.some(k => tiene(t, k))) { document.getElementById(cfg.selProp).value = c.v; break; } } }
+
       let nota = '';
-      for (const com of VOZ_COMERCIOS) { if (com.k.some(k => tiene(t, k))) { nota = com.n; break; } }
-      if (!nota) {
-        const mEn = texto.match(/ en (.+)/i);
-        if (mEn) {
-          nota = mEn[1]
-            .replace(/\s*(el\s+)?\d{1,2}\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)(\s+de\s+\d{4})?\s*/i, ' ')
-            .replace(/\s*\d{1,2}\/\d{1,2}(\/\d{2,4})?\s*/, ' ')
-            .replace(/\s*(hoy|ayer)\s*/i, ' ')
-            .replace(/\d[\d.,]*\s+con\s+\d{1,2}\b/gi, ' ')
-            .replace(/[€$]/g, ' ')
-            .replace(/\s*\d[\d.,]*\s*/g, ' ')
-            .replace(/\s*y\s+pagu[eé].*$/i, '')
-            .replace(/\s*con\s+(mi\s+)?(tarjeta|cuenta).*$/i, '')
-            .replace(/\s+(euros?|dolares?|pesos?)\s*/gi, ' ')
-            .replace(/\s+/g, ' ')
-            .trim();
-        }
-      }
-      document.getElementById('nota').value = nota;
+      if (cfg.comercios) { for (const com of VOZ_COMERCIOS) { if (com.k.some(k => tiene(t, k))) { nota = com.n; break; } } }
+      if (!nota) { const mEn = texto.match(/ en (.+)/i); if (mEn) nota = limpiarNota(mEn[1]); }
+      document.getElementById(cfg.nota).value = nota;
     }
 
     // ===== GASTOS =====
@@ -310,6 +340,7 @@
         ingresos.unshift({ id: Date.now(), monto: monto, moneda: document.getElementById('i-moneda').value, categoria: document.getElementById('i-categoria').value, medio: document.getElementById('i-medio').value, nota: document.getElementById('i-nota').value, fecha: f.fecha, fechaISO: f.fechaISO });
         document.getElementById('i-monto').value = ''; document.getElementById('i-nota').value = '';
         document.getElementById('i-moneda').value = DEF_MONEDA['i-moneda']; document.getElementById('i-fecha').value = hoyISO();
+        document.getElementById('voz-result-i').textContent = '';
       }
       guardarIngresos(); renderIngresos();
     }
@@ -351,6 +382,7 @@
         ahorros.unshift({ id: Date.now(), monto: monto, moneda: document.getElementById('a-moneda').value, donde: document.getElementById('a-donde').value, nota: document.getElementById('a-nota').value, fecha: f.fecha, fechaISO: f.fechaISO });
         document.getElementById('a-monto').value = ''; document.getElementById('a-nota').value = '';
         document.getElementById('a-moneda').value = DEF_MONEDA['a-moneda']; document.getElementById('a-fecha').value = hoyISO();
+        document.getElementById('voz-result-a').textContent = '';
       }
       guardarAhorros(); renderAhorros();
     }
@@ -391,6 +423,7 @@
         inversiones.unshift({ id: Date.now(), monto: monto, moneda: document.getElementById('inv-moneda').value, tipo: document.getElementById('inv-tipo').value, ticker: document.getElementById('inv-ticker').value, nota: document.getElementById('inv-nota').value, fecha: f.fecha, fechaISO: f.fechaISO });
         document.getElementById('inv-monto').value = ''; document.getElementById('inv-ticker').value = ''; document.getElementById('inv-nota').value = '';
         document.getElementById('inv-moneda').value = DEF_MONEDA['inv-moneda']; document.getElementById('inv-fecha').value = hoyISO();
+        document.getElementById('voz-result-inv').textContent = '';
       }
       guardarInversiones(); renderInversiones();
     }
