@@ -66,8 +66,8 @@
     <div class="card" id="datos-card">
       <div class="patri-label">Datos</div>
       <button onclick="exportarExcel()">Exportar a Excel</button>
-      <button class="btn-sec" onclick="document.getElementById('file-import').click()">Importar Excel / CSV</button>
-      <input type="file" id="file-import" accept=".xlsx,.xls,.csv" style="display:none" onchange="archivoElegido(this)">
+      <button class="btn-sec" onclick="document.getElementById('file-import').click()">Importar Excel / CSV / PDF</button>
+      <input type="file" id="file-import" accept=".xlsx,.xls,.csv,.pdf" style="display:none" onchange="archivoElegido(this)">
       <div class="import-panel" id="import-panel"></div>
     </div>
   </div>
@@ -604,10 +604,70 @@
     function medioDesde(desc) { const t = norm(String(desc||'')); for (const m of VOZ_MEDIOS) { if (m.k.some(k => tiene(t, k))) return m.v; } return null; }
 
     let IMP = null;
+    function cargarPDFjs() {
+      return new Promise((res, rej) => {
+        if (window.pdfjsLib) { res(); return; }
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+        s.onload = () => { try { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; res(); } catch(e){ rej(e); } };
+        s.onerror = () => rej(new Error('No pude cargar el lector de PDF. ¿Tenés internet?'));
+        document.head.appendChild(s);
+      });
+    }
+    async function extraerLineasPDF(file) {
+      const buf = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+      const lineas = [];
+      for (let p = 1; p <= pdf.numPages; p++) {
+        const page = await pdf.getPage(p);
+        const tc = await page.getTextContent();
+        const rows = {};
+        tc.items.forEach(it => {
+          if (!it.str || !it.str.trim()) return;
+          const y = Math.round(it.transform[5]);
+          (rows[y] = rows[y] || []).push([it.transform[4], it.str]);
+        });
+        Object.keys(rows).map(Number).sort((a,b)=>b-a).forEach(y => {
+          const linea = rows[y].sort((a,b)=>a[0]-b[0]).map(t=>t[1]).join(' ').replace(/\s+/g,' ').trim();
+          if (linea) lineas.push(linea);
+        });
+      }
+      return lineas;
+    }
+    function parseBBVA(lineas) {
+      const filas = [];
+      const reDate = /^(\d{2}\/\d{2}\/\d{4})\s+(.+?)\s+(-?[\d.]+,\d{2})$/;
+      for (const ln of lineas) {
+        const m = ln.match(reDate);
+        if (!m) continue;
+        const comercio = m[2]
+          .replace(/(?:\*{2,}\s*)+\d{4}/g, ' ')
+          .replace(/\s*\$\s*$/, '')
+          .replace(/\s+\d{6}\s*$/, '')
+          .replace(/\s+/g, ' ').trim();
+        if (!comercio) continue;
+        filas.push([m[1], comercio, m[3]]);
+      }
+      return filas;
+    }
+    async function importarPDF(file, panel) {
+      try { await cargarPDFjs(); } catch (e) { panel.innerHTML = '<div class="vacio">'+e.message+'</div>'; return; }
+      let lineas;
+      try { lineas = await extraerLineasPDF(file); }
+      catch (e) { panel.innerHTML = '<div class="vacio">No pude leer el PDF ('+e.message+').</div>'; return; }
+      const filas = parseBBVA(lineas);
+      if (!filas.length) {
+        panel.innerHTML = '<div class="vacio">No reconocí movimientos en este PDF. Por ahora leo resúmenes de BBVA (sección Compras Visa Débito).</div>';
+        return;
+      }
+      IMP = { headers: ['Fecha','Comercio','Importe'], filas };
+      mostrarMapeo();
+    }
     async function archivoElegido(input) {
       const file = input.files && input.files[0]; if (!file) return;
       const panel = document.getElementById('import-panel');
       panel.innerHTML = '<div class="vacio">Leyendo archivo…</div>';
+      if (/\.pdf$/i.test(file.name) || file.type === 'application/pdf') { await importarPDF(file, panel); input.value=''; return; }
       try { await cargarXLSX(); } catch (e) { panel.innerHTML = '<div class="vacio">'+e.message+'</div>'; input.value=''; return; }
       try {
         const buf = await file.arrayBuffer();
