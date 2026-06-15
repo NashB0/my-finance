@@ -21,6 +21,8 @@
     .btn-cancelar:active { background: #3f4d63; }
     .btn-voz { background: var(--acento-tenue); color: var(--acento-claro); border: 1px solid var(--acento-borde); margin-bottom: 12px; }
     .btn-voz:active { background: rgba(201,168,106,.2); }
+    .btn-sec { background: #334155; color: #e2e8f0; margin-top: 10px; }
+    .btn-sec:active { background: #3f4d63; }
     .voz-result { font-size: 12px; color: #94a3b8; margin: -4px 0 12px; min-height: 14px; }
     .gasto { background: #1e293b; border: 1px solid rgba(148,163,184,.08); border-radius: 8px; padding: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
     .gasto-info { font-size: 14px; }
@@ -61,6 +63,13 @@
     <h1>Inicio</h1>
     <div id="patrimonio"></div>
     <div id="resumen-mensual"></div>
+    <div class="card" id="datos-card">
+      <div class="patri-label">Datos</div>
+      <button onclick="exportarExcel()">Exportar a Excel</button>
+      <button class="btn-sec" onclick="document.getElementById('file-import').click()">Importar Excel / CSV</button>
+      <input type="file" id="file-import" accept=".xlsx,.xls,.csv" style="display:none" onchange="archivoElegido(this)">
+      <div class="import-panel" id="import-panel"></div>
+    </div>
   </div>
 
   <div class="seccion" id="seccion-ingresos">
@@ -544,6 +553,163 @@
         localStorage.setItem('cotizaciones', JSON.stringify(cotiz));
       } catch (err) {}
       actualizarInicio();
+    }
+
+    // ===== EXPORTAR / IMPORTAR EXCEL =====
+    function cargarXLSX() {
+      return new Promise((res, rej) => {
+        if (window.XLSX) { res(); return; }
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        s.onload = () => res();
+        s.onerror = () => rej(new Error('No pude cargar la librería de Excel. ¿Tenés internet?'));
+        document.head.appendChild(s);
+      });
+    }
+    function numImport(v) {
+      if (typeof v === 'number') return v;
+      if (v == null) return NaN;
+      let s = String(v).trim(); if (!s) return NaN;
+      const neg = /^\(.*\)$/.test(s) || s.includes('-');
+      s = s.replace(/[^\d.,]/g, '');
+      if (s.includes('.') && s.includes(',')) {
+        if (s.lastIndexOf(',') > s.lastIndexOf('.')) s = s.replace(/\./g, '').replace(',', '.');
+        else s = s.replace(/,/g, '');
+      } else if (s.includes(',')) {
+        const p = s.split(',');
+        if (p.length === 2 && p[1].length <= 2) s = s.replace(',', '.');
+        else s = s.replace(/,/g, '');
+      }
+      let n = parseFloat(s); if (isNaN(n)) return NaN;
+      return neg ? -Math.abs(n) : n;
+    }
+    function fechaImport(v) {
+      if (v instanceof Date && !isNaN(v)) return v;
+      if (typeof v === 'number' && v > 20000 && v < 80000) { const d = new Date(Math.round((v - 25569) * 86400000)); if (!isNaN(d)) return d; }
+      const s = String(v).trim();
+      let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); if (m) return new Date(+m[1], +m[2]-1, +m[3]);
+      m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+      if (m) { let dd=+m[1], mm=+m[2], yy=+m[3]; if (yy<100) yy+=2000; if (mm>12 && dd<=12){ const t=dd; dd=mm; mm=t; } const d=new Date(yy, mm-1, dd); if(!isNaN(d)) return d; }
+      const d = new Date(s); return isNaN(d) ? null : d;
+    }
+    function monedaImport(v) {
+      const s = String(v||'').toLowerCase();
+      if (/usd|u\$|d[oó]l/.test(s)) return 'USD';
+      if (/eur|€/.test(s)) return 'EUR';
+      if (/ars|peso|\$/.test(s)) return 'ARS';
+      return null;
+    }
+    function detectarCol(headers, regex) { for (let i=0;i<headers.length;i++){ if (regex.test(String(headers[i]))) return i; } return -1; }
+    function catDesde(desc, dict) { const t = norm(String(desc||'')); for (const c of dict) { if (c.k.some(k => tiene(t, k))) return c.v; } return null; }
+    function medioDesde(desc) { const t = norm(String(desc||'')); for (const m of VOZ_MEDIOS) { if (m.k.some(k => tiene(t, k))) return m.v; } return null; }
+
+    let IMP = null;
+    async function archivoElegido(input) {
+      const file = input.files && input.files[0]; if (!file) return;
+      const panel = document.getElementById('import-panel');
+      panel.innerHTML = '<div class="vacio">Leyendo archivo…</div>';
+      try { await cargarXLSX(); } catch (e) { panel.innerHTML = '<div class="vacio">'+e.message+'</div>'; input.value=''; return; }
+      try {
+        const buf = await file.arrayBuffer();
+        const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+        let hr = 0, best = -1;
+        for (let i=0;i<Math.min(rows.length,15);i++){ const ne = rows[i].filter(c=>String(c).trim()!=='').length; if (ne>=2 && ne>best){best=ne;hr=i;} }
+        const headers = (rows[hr]||[]).map(h=>String(h).trim());
+        const filas = rows.slice(hr+1).filter(r => r.some(c=>String(c).trim()!==''));
+        if (!filas.length) { panel.innerHTML = '<div class="vacio">No encontré filas de datos en el archivo.</div>'; input.value=''; return; }
+        IMP = { headers, filas };
+        mostrarMapeo();
+      } catch (e) { panel.innerHTML = '<div class="vacio">No pude leer el archivo ('+e.message+').</div>'; }
+      input.value = '';
+    }
+    function opcsCols(sel) { return IMP.headers.map((h,i)=>`<option value="${i}" ${i===sel?'selected':''}>${h||('Columna '+(i+1))}</option>`).join(''); }
+    function mostrarMapeo() {
+      const h = IMP.headers;
+      const cF = detectarCol(h, /fecha|date|d[ií]a/i);
+      const cM = detectarCol(h, /importe|monto|amount|valor|value|neto|^net|total/i);
+      const cD = detectarCol(h, /descrip|concepto|detalle|memo|referen|reference|comercio|merchant|nombre|name|movimiento/i);
+      const cMon = detectarCol(h, /moneda|divisa|currency|curr/i);
+      const panel = document.getElementById('import-panel');
+      panel.innerHTML = `
+        <div style="margin-top:12px;border-top:1px solid #334155;padding-top:12px;">
+          <div class="patri-label">Mapear columnas · ${IMP.filas.length} filas</div>
+          <label>Fecha</label><select id="map-fecha">${opcsCols(cF)}</select>
+          <label>Monto</label><select id="map-monto">${opcsCols(cM)}</select>
+          <label>Descripción</label><select id="map-desc"><option value="-1">— ninguna —</option>${h.map((hh,i)=>`<option value="${i}" ${i===cD?'selected':''}>${hh||('Columna '+(i+1))}</option>`).join('')}</select>
+          <label>Moneda</label><select id="map-moneda"><option value="fija-ARS">Fija: Peso (AR$)</option><option value="fija-USD">Fija: Dólar (US$)</option><option value="fija-EUR">Fija: Euro (€)</option>${h.map((hh,i)=>`<option value="${i}">Columna: ${hh||('Columna '+(i+1))}</option>`).join('')}</select>
+          <label>A qué pestaña va</label><select id="map-destino"><option value="signo">Por signo (+ Ingresos / − Gastos)</option><option value="gastos">Todo a Gastos</option><option value="ingresos">Todo a Ingresos</option><option value="ahorros">Todo a Ahorros</option><option value="inversiones">Todo a Inversiones</option></select>
+          <button onclick="previsualizarImport()">Previsualizar</button>
+          <div id="import-preview"></div>
+        </div>`;
+      if (cMon >= 0) document.getElementById('map-moneda').value = String(cMon);
+    }
+    function leerMapeo() {
+      return {
+        fechaC: +document.getElementById('map-fecha').value,
+        montoC: +document.getElementById('map-monto').value,
+        descC: +document.getElementById('map-desc').value,
+        monV: document.getElementById('map-moneda').value,
+        destino: document.getElementById('map-destino').value
+      };
+    }
+    function interpretarFilas() {
+      const m = leerMapeo();
+      const out = [];
+      for (const r of IMP.filas) {
+        let monto = numImport(r[m.montoC]);
+        if (isNaN(monto) || monto === 0) continue;
+        const desc = m.descC >= 0 ? String(r[m.descC]||'').trim() : '';
+        const fd = fechaImport(r[m.fechaC]);
+        let moneda;
+        if (m.monV.indexOf('fija-') === 0) moneda = m.monV.slice(5);
+        else moneda = monedaImport(r[+m.monV]) || 'ARS';
+        let destino = m.destino;
+        if (destino === 'signo') destino = monto >= 0 ? 'ingresos' : 'gastos';
+        out.push({ monto: Math.abs(monto), moneda, desc, fecha: fd, destino });
+      }
+      return out;
+    }
+    function previsualizarImport() {
+      const items = interpretarFilas();
+      const prev = document.getElementById('import-preview');
+      if (!items.length) { prev.innerHTML = '<div class="vacio">No pude interpretar montos válidos. Revisá la columna Monto.</div>'; return; }
+      const porDest = {}; items.forEach(i=>{porDest[i.destino]=(porDest[i.destino]||0)+1;});
+      const resumen = Object.keys(porDest).map(k=>porDest[k]+' → '+k).join(' · ');
+      const muestra = items.slice(0,3).map(i=>`<div class="fila"><span>${i.fecha?i.fecha.toLocaleDateString('es-AR'):'sin fecha'} · ${i.desc||'—'}</span><span>${simbolo(i.moneda)}${fmtMonto(i.monto)} → ${i.destino}</span></div>`).join('');
+      prev.innerHTML = `<div style="margin-top:12px;"><div class="patri-label">Vista previa · ${items.length} movimientos</div><div style="font-size:13px;color:#94a3b8;margin-bottom:8px;">${resumen}</div>${muestra}<button onclick="confirmarImport()">Importar ${items.length} movimientos</button></div>`;
+    }
+    function confirmarImport() {
+      const items = interpretarFilas();
+      let n = 0;
+      items.forEach((it, idx) => {
+        const fechaISO = it.fecha ? isoDeFecha(it.fecha) : hoyISO();
+        const fechaStr = (it.fecha || new Date()).toLocaleDateString('es-AR');
+        const base = { id: Date.now() + idx, monto: it.monto, moneda: it.moneda, nota: it.desc, fecha: fechaStr, fechaISO: fechaISO };
+        if (it.destino === 'gastos') gastos.unshift(Object.assign(base, { categoria: catDesde(it.desc, VOZ_CATS) || 'Otros', medio: medioDesde(it.desc) || 'Importado' }));
+        else if (it.destino === 'ingresos') ingresos.unshift(Object.assign(base, { categoria: catDesde(it.desc, VOZ_CATS_ING) || 'Otros', medio: medioDesde(it.desc) || 'Importado' }));
+        else if (it.destino === 'ahorros') ahorros.unshift(Object.assign(base, { donde: 'Importado' }));
+        else if (it.destino === 'inversiones') inversiones.unshift(Object.assign(base, { tipo: 'Otros', ticker: '' }));
+        n++;
+      });
+      guardar(); guardarIngresos(); guardarAhorros(); guardarInversiones();
+      render(); renderIngresos(); renderAhorros(); renderInversiones();
+      IMP = null;
+      document.getElementById('import-panel').innerHTML = `<div class="vacio" style="color:#34d399;">Importé ${n} movimientos. Revisalos en cada pestaña.</div>`;
+    }
+    async function exportarExcel() {
+      try { await cargarXLSX(); } catch (e) { alert(e.message); return; }
+      const wb = XLSX.utils.book_new();
+      const aoaG = [['Fecha','Monto','Moneda','Categoría','Medio','Nota']].concat(gastos.map(g=>[g.fechaISO||isoDe(g), g.monto, monedaDe(g), g.categoria, g.medio, g.nota||'']));
+      const aoaI = [['Fecha','Monto','Moneda','Categoría','Medio','Nota']].concat(ingresos.map(i=>[i.fechaISO||isoDe(i), i.monto, monedaDe(i), i.categoria, i.medio, i.nota||'']));
+      const aoaA = [['Fecha','Monto','Moneda','Dónde','Nota']].concat(ahorros.map(a=>[a.fechaISO||isoDe(a), a.monto, monedaDe(a), a.donde, a.nota||'']));
+      const aoaV = [['Fecha','Monto','Moneda','Tipo','Ticker','Nota']].concat(inversiones.map(v=>[v.fechaISO||isoDe(v), v.monto, monedaDe(v), v.tipo, v.ticker||'', v.nota||'']));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoaG), 'Gastos');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoaI), 'Ingresos');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoaA), 'Ahorros');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoaV), 'Inversiones');
+      XLSX.writeFile(wb, 'mis-finanzas-' + hoyISO() + '.xlsx');
     }
 
     Object.keys(DEF_MONEDA).forEach(id => { const el = document.getElementById(id); if (el) el.value = DEF_MONEDA[id]; });
