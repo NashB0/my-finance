@@ -6,58 +6,65 @@
   <title>Mis Finanzas</title>
   <link rel="manifest" href="manifest.json">
   <style>
+    :root { --acento:#c9a86a; --acento-claro:#e2c58a; --acento-borde:rgba(201,168,106,.35); --acento-tenue:rgba(201,168,106,.12); }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, system-ui, sans-serif; background: #0f172a; color: #e2e8f0; padding: 16px; padding-bottom: 80px; max-width: 600px; margin: 0 auto; }
-    h1 { font-size: 22px; margin-bottom: 16px; text-align: center; }
-    .card { background: #1e293b; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
-    label { display: block; font-size: 13px; margin-bottom: 4px; color: #94a3b8; }
+    body { font-family: -apple-system, system-ui, sans-serif; background: #0f172a; color: #e2e8f0; padding: 16px; padding-bottom: 84px; max-width: 600px; margin: 0 auto; }
+    h1 { font-size: 14px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: #cbd5e1; text-align: center; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #1e293b; }
+    .card { background: #1e293b; border: 1px solid rgba(148,163,184,.08); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+    .card.hero { border: 1px solid var(--acento-borde); }
+    label { display: block; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 5px; color: #94a3b8; }
     input, select { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-size: 16px; margin-bottom: 12px; color-scheme: dark; }
-    button { width: 100%; padding: 14px; border: none; border-radius: 8px; background: #3b82f6; color: white; font-size: 16px; font-weight: bold; cursor: pointer; }
-    button:active { background: #2563eb; }
-    .btn-cancelar { background: #475569; margin-top: 10px; }
-    .btn-voz { background: #8b5cf6; margin-bottom: 12px; }
-    .btn-voz:active { background: #7c3aed; }
+    input:focus, select:focus { border-color: var(--acento); outline: none; }
+    button { width: 100%; padding: 14px; border: none; border-radius: 8px; background: var(--acento); color: #15171c; font-size: 16px; font-weight: 700; letter-spacing: 0.02em; cursor: pointer; }
+    button:active { background: var(--acento-claro); }
+    .btn-cancelar { background: #334155; color: #e2e8f0; margin-top: 10px; }
+    .btn-cancelar:active { background: #3f4d63; }
+    .btn-voz { background: var(--acento-tenue); color: var(--acento-claro); border: 1px solid var(--acento-borde); margin-bottom: 12px; }
+    .btn-voz:active { background: rgba(201,168,106,.2); }
     .voz-result { font-size: 12px; color: #94a3b8; margin: -4px 0 12px; min-height: 14px; }
-    .gasto { background: #1e293b; border-radius: 8px; padding: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+    .gasto { background: #1e293b; border: 1px solid rgba(148,163,184,.08); border-radius: 8px; padding: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
     .gasto-info { font-size: 14px; }
     .gasto-info small { color: #94a3b8; display: block; }
-    .gasto-monto { font-weight: bold; font-size: 16px; color: #f87171; }
-    .ingreso-monto { font-weight: bold; font-size: 16px; color: #4ade80; }
+    .gasto-monto { font-weight: bold; font-size: 16px; color: #e8796b; }
+    .ingreso-monto { font-weight: bold; font-size: 16px; color: #34d399; }
     .ahorro-monto { font-weight: bold; font-size: 16px; color: #60a5fa; }
     .inversion-monto { font-weight: bold; font-size: 16px; color: #fb923c; }
     .borrar { background: none; border: none; color: #64748b; width: auto; padding: 4px 6px; font-size: 18px; }
+    .borrar:active { background: none; }
     .total { font-size: 18px; font-weight: bold; text-align: center; }
     .vacio { text-align: center; color: #64748b; padding: 20px; }
     .mes-titulo { font-size: 16px; font-weight: bold; margin-bottom: 10px; }
     .fila { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 15px; }
     .balance { border-top: 1px solid #334155; margin-top: 8px; padding-top: 8px; font-weight: bold; }
-    .verde { color: #4ade80; font-weight: bold; } .rojo { color: #f87171; font-weight: bold; }
+    .verde { color: #34d399; font-weight: bold; } .rojo { color: #e8796b; font-weight: bold; }
     .azul { color: #60a5fa; font-weight: bold; } .naranja { color: #fb923c; font-weight: bold; }
-    .patri-label { font-size: 13px; color: #94a3b8; margin-bottom: 4px; }
-    .patri-valor { font-size: 26px; font-weight: bold; }
-    .desglose { display: flex; justify-content: space-between; margin-top: 12px; gap: 8px; }
+    .oro { color: var(--acento-claro); font-weight: bold; }
+    .patri-label { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: #94a3b8; margin-bottom: 8px; }
+    .patri-valor { font-size: 30px; font-weight: 700; letter-spacing: -0.5px; }
+    .desglose { display: flex; justify-content: space-between; margin-top: 14px; gap: 8px; }
     .desglose div { flex: 1; text-align: center; background: #0f172a; border-radius: 8px; padding: 8px 4px; }
-    .desglose small { display: block; color: #94a3b8; font-size: 11px; margin-bottom: 2px; }
+    .desglose small { display: block; color: #94a3b8; font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 3px; }
     .desglose span { font-size: 13px; font-weight: bold; }
-    .cotiz-info { font-size: 12px; color: #94a3b8; margin-top: 12px; border-top: 1px solid #334155; padding-top: 10px; line-height: 1.6; }
+    .cotiz-info { font-size: 12px; color: #94a3b8; margin-top: 14px; border-top: 1px solid #334155; padding-top: 10px; line-height: 1.6; }
     .cotiz-info select { width: auto; display: inline-block; padding: 4px 8px; font-size: 12px; margin: 0 0 0 4px; }
     .seccion { display: none; } .seccion.activa { display: block; }
-    .nav { position: fixed; bottom: 0; left: 0; right: 0; background: #1e293b; border-top: 1px solid #334155; display: flex; justify-content: space-around; padding: 8px 0; z-index: 100; }
-    .nav button { background: none; border: none; width: auto; padding: 4px; color: #64748b; font-size: 10px; font-weight: normal; display: flex; flex-direction: column; align-items: center; gap: 3px; white-space: nowrap; }
+    .nav { position: fixed; bottom: 0; left: 0; right: 0; background: #131c2e; border-top: 1px solid #243044; display: flex; justify-content: space-around; padding: 9px 0 10px; z-index: 100; }
+    .nav button { background: none; border: none; width: auto; padding: 2px 4px; color: #64748b; font-size: 10px; letter-spacing: 0.02em; font-weight: 500; display: flex; flex-direction: column; align-items: center; gap: 4px; white-space: nowrap; }
     .nav button:active { background: none; }
-    .nav .icono { font-size: 20px; } .nav button.activa { color: #3b82f6; }
+    .nav svg { width: 22px; height: 22px; display: block; }
+    .nav button.activa { color: var(--acento); }
   </style>
 </head>
 <body>
 
   <div class="seccion activa" id="seccion-inicio">
-    <h1>🏠 Inicio</h1>
+    <h1>Inicio</h1>
     <div id="patrimonio"></div>
     <div id="resumen-mensual"></div>
   </div>
 
   <div class="seccion" id="seccion-ingresos">
-    <h1>💰 Ingresos</h1>
+    <h1>Ingresos</h1>
     <div class="card">
       <button type="button" class="btn-voz" id="btn-voz-i" onclick="escuchar(VOZ_CFG.ingreso)">🎤 Hablar</button>
       <div class="voz-result" id="voz-result-i"></div>
@@ -75,7 +82,7 @@
   </div>
 
   <div class="seccion" id="seccion-gastos">
-    <h1>💸 Gastos</h1>
+    <h1>Gastos</h1>
     <div class="card">
       <button type="button" class="btn-voz" id="btn-voz" onclick="escuchar(VOZ_CFG.gasto)">🎤 Hablar</button>
       <div class="voz-result" id="voz-result"></div>
@@ -93,7 +100,7 @@
   </div>
 
   <div class="seccion" id="seccion-ahorros">
-    <h1>🏦 Ahorros</h1>
+    <h1>Ahorros</h1>
     <div class="card">
       <button type="button" class="btn-voz" id="btn-voz-a" onclick="escuchar(VOZ_CFG.ahorro)">🎤 Hablar</button>
       <div class="voz-result" id="voz-result-a"></div>
@@ -110,7 +117,7 @@
   </div>
 
   <div class="seccion" id="seccion-inversiones">
-    <h1>📈 Inversiones</h1>
+    <h1>Inversiones</h1>
     <div class="card">
       <button type="button" class="btn-voz" id="btn-voz-inv" onclick="escuchar(VOZ_CFG.inversion)">🎤 Hablar</button>
       <div class="voz-result" id="voz-result-inv"></div>
@@ -128,11 +135,11 @@
   </div>
 
   <nav class="nav">
-    <button class="activa" onclick="mostrar('inicio', this)"><span class="icono">🏠</span>Inicio</button>
-    <button onclick="mostrar('ingresos', this)"><span class="icono">💰</span>Ingresos</button>
-    <button onclick="mostrar('gastos', this)"><span class="icono">💸</span>Gastos</button>
-    <button onclick="mostrar('ahorros', this)"><span class="icono">🏦</span>Ahorros</button>
-    <button onclick="mostrar('inversiones', this)"><span class="icono">📈</span>Inversiones</button>
+    <button class="activa" onclick="mostrar('inicio', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 12 4l8 7"/><path d="M6 9.5V20h12V9.5"/></svg>Inicio</button>
+    <button onclick="mostrar('ingresos', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v9"/><path d="M8 9.5l4 4 4-4"/><path d="M5 19h14"/></svg>Ingresos</button>
+    <button onclick="mostrar('gastos', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V6"/><path d="M8 9.5l4-4 4 4"/><path d="M5 19h14"/></svg>Gastos</button>
+    <button onclick="mostrar('ahorros', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="11" cy="12" r="3"/><path d="M14 12h3"/></svg>Ahorros</button>
+    <button onclick="mostrar('inversiones', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5v14h16"/><path d="M7 14l3.5-4 3 2.2L20 7"/></svg>Inversiones</button>
   </nav>
 
   <script>
@@ -453,12 +460,12 @@
     function actualizarInicio() { renderPatrimonio(); renderInicio(); }
     function selectorCotiz() {
       const nombre = { bolsa:'MEP', blue:'Blue', oficial:'Oficial' }[tipoDolar] || tipoDolar;
-      const linea = cotiz ? `💱 1 US$ = AR$${cotiz.usdArs.toLocaleString('es-AR')} (${nombre}) &nbsp;·&nbsp; 1 € = US$${cotiz.eurUsd.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:4})}<br>Actualizado: ${cotiz.fecha}` : '💱 Actualizando cotizaciones… (la primera vez necesitás internet)';
+      const linea = cotiz ? `1 US$ = AR$${cotiz.usdArs.toLocaleString('es-AR')} (${nombre}) &nbsp;·&nbsp; 1 € = US$${cotiz.eurUsd.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:4})}<br>Actualizado: ${cotiz.fecha}` : 'Actualizando cotizaciones… (la primera vez necesitás internet)';
       return `<div class="cotiz-info">${linea}<br>Dólar: <select onchange="cambiarTipoDolar(this.value)"><option value="bolsa" ${tipoDolar==='bolsa'?'selected':''}>MEP</option><option value="blue" ${tipoDolar==='blue'?'selected':''}>Blue</option><option value="oficial" ${tipoDolar==='oficial'?'selected':''}>Oficial</option></select></div>`;
     }
     function renderPatrimonio() {
       const cont = document.getElementById('patrimonio');
-      if (!cotiz) { cont.innerHTML = `<div class="card"><div class="patri-label">💼 Patrimonio total (US$)</div><div class="vacio">Necesito las cotizaciones para convertir a dólares.</div>${selectorCotiz()}</div>`; return; }
+      if (!cotiz) { cont.innerHTML = `<div class="card hero"><div class="patri-label">Patrimonio total (US$)</div><div class="vacio">Necesito las cotizaciones para convertir a dólares.</div>${selectorCotiz()}</div>`; return; }
       const sumU = (arr) => arr.reduce((s, x) => s + aUSD(x.monto, monedaDe(x)), 0);
       const totalIng = sumU(ingresos), totalGas = sumU(gastos), totalAho = sumU(ahorros), totalInv = sumU(inversiones);
       const disponible = totalIng - totalGas; const patrimonio = disponible + totalAho + totalInv;
@@ -475,7 +482,7 @@
         const puntos = Object.keys(netMes).sort().map(k => { acum += netMes[k].net; return { mes:netMes[k].mes, anio:netMes[k].anio, valor:acum }; });
         grafico = construirGrafico(puntos);
       }
-      cont.innerHTML = `<div class="card"><div class="patri-label">💼 Patrimonio total (US$)</div><div class="patri-valor ${patrimonio>=0?'verde':'rojo'}">${fmtUSD(patrimonio)}</div>${grafico}<div class="desglose"><div><small>Disponible</small><span class="${disponible>=0?'verde':'rojo'}">${fmtUSD(disponible)}</span></div><div><small>Ahorros</small><span class="azul">${fmtUSD(totalAho)}</span></div><div><small>Inversiones</small><span class="naranja">${fmtUSD(totalInv)}</span></div></div>${selectorCotiz()}</div>`;
+      cont.innerHTML = `<div class="card hero"><div class="patri-label">Patrimonio total (US$)</div><div class="patri-valor ${patrimonio>=0?'oro':'rojo'}">${fmtUSD(patrimonio)}</div>${grafico}<div class="desglose"><div><small>Disponible</small><span class="${disponible>=0?'verde':'rojo'}">${fmtUSD(disponible)}</span></div><div><small>Ahorros</small><span class="azul">${fmtUSD(totalAho)}</span></div><div><small>Inversiones</small><span class="naranja">${fmtUSD(totalInv)}</span></div></div>${selectorCotiz()}</div>`;
     }
     function construirGrafico(puntos) {
       const W = 320, H = 150, padL = 12, padR = 12, padT = 14, padB = 28;
@@ -485,8 +492,8 @@
       const coords = puntos.map((p, i) => ({ x: padL + (n === 1 ? plotW/2 : plotW*i/(n-1)), y: padT + plotH*(1-(p.valor-min)/(max-min)), p: p }));
       let zeroLine = '';
       if (min < 0 && max > 0) { const yz = padT + plotH*(1-(0-min)/(max-min)); zeroLine = `<line x1="${padL}" y1="${yz.toFixed(1)}" x2="${W-padR}" y2="${yz.toFixed(1)}" stroke="#334155" stroke-dasharray="3 3" stroke-width="1"/>`; }
-      const linea = coords.length > 1 ? `<polyline fill="none" stroke="#a78bfa" stroke-width="2" points="${coords.map(c => c.x.toFixed(1)+','+c.y.toFixed(1)).join(' ')}"/>` : '';
-      const circ = coords.map(c => `<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="3.5" fill="#a78bfa"/>`).join('');
+      const linea = coords.length > 1 ? `<polyline fill="none" stroke="#c9a86a" stroke-width="2" points="${coords.map(c => c.x.toFixed(1)+','+c.y.toFixed(1)).join(' ')}"/>` : '';
+      const circ = coords.map(c => `<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="3.5" fill="#c9a86a"/>`).join('');
       const etiq = coords.map(c => `<text x="${c.x.toFixed(1)}" y="${H-8}" fill="#94a3b8" font-size="9" text-anchor="middle">${MESES[c.p.mes].slice(0,3)}</text>`).join('');
       return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;margin-top:10px;">${zeroLine}${linea}${circ}${etiq}</svg>`;
     }
@@ -496,9 +503,37 @@
       const meses = {};
       function agrupar(items, tipo) { items.forEach(item => { const d = fechaDe(item); const k = d.getFullYear()+'-'+String(d.getMonth()).padStart(2,'0'); if (!meses[k]) meses[k] = { anio:d.getFullYear(), mes:d.getMonth(), ingresos:0, gastos:0 }; meses[k][tipo] += aUSD(item.monto, monedaDe(item)); }); }
       agrupar(ingresos, 'ingresos'); agrupar(gastos, 'gastos');
-      const claves = Object.keys(meses).sort().reverse();
+      const claves = Object.keys(meses).sort();
       if (!claves.length) { cont.innerHTML = ''; return; }
-      cont.innerHTML = claves.map(k => { const m = meses[k]; const bal = m.ingresos - m.gastos; return `<div class="card"><div class="mes-titulo">${MESES[m.mes]} ${m.anio} <span style="font-size:12px;color:#94a3b8;font-weight:normal;">(US$)</span></div><div class="fila"><span>Ingresos</span><span class="verde">${fmtUSD(m.ingresos)}</span></div><div class="fila"><span>Gastos</span><span class="rojo">${fmtUSD(m.gastos)}</span></div><div class="fila balance"><span>Balance</span><span class="${bal>=0?'verde':'rojo'}">${fmtUSD(bal)}</span></div></div>`; }).join('');
+      const datos = claves.map(k => meses[k]);
+      cont.innerHTML = `<div class="card"><div class="patri-label">Resumen mensual (US$)</div>${construirGraficoMensual(datos)}</div>`;
+    }
+    function construirGraficoMensual(datos) {
+      const W = 320, H = 190, padL = 10, padR = 10, padT = 16, padB = 48;
+      const plotW = W - padL - padR, plotH = H - padT - padB, n = datos.length;
+      const ing = datos.map(m => m.ingresos);
+      const gas = datos.map(m => -m.gastos);
+      const bal = datos.map(m => m.ingresos - m.gastos);
+      const todos = ing.concat(gas).concat(bal).concat([0]);
+      let min = Math.min(...todos), max = Math.max(...todos);
+      if (min === max) { min -= 1; max += 1; }
+      const X = i => padL + (n === 1 ? plotW/2 : plotW*i/(n-1));
+      const Y = v => padT + plotH*(1-(v-min)/(max-min));
+      let zero = '';
+      if (min < 0 && max > 0) { const yz = Y(0); zero = `<line x1="${padL}" y1="${yz.toFixed(1)}" x2="${W-padR}" y2="${yz.toFixed(1)}" stroke="#334155" stroke-dasharray="3 3" stroke-width="1"/>`; }
+      function serie(vals, color, wd, dot) {
+        if (n === 1) { return `<circle cx="${X(0).toFixed(1)}" cy="${Y(vals[0]).toFixed(1)}" r="3.5" fill="${color}"/>`; }
+        const pts = vals.map((v,i) => `${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
+        let d = dot ? vals.map((v,i) => `<circle cx="${X(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="2.6" fill="${color}"/>`).join('') : '';
+        return `<polyline fill="none" stroke="${color}" stroke-width="${wd}" points="${pts}"/>${d}`;
+      }
+      const sIng = serie(ing, '#34d399', 1.4, false);
+      const sGas = serie(gas, '#e8796b', 1.4, false);
+      const sBal = serie(bal, '#c9a86a', 2.6, true);
+      const etiq = datos.map((m,i) => `<text x="${X(i).toFixed(1)}" y="${(padT+plotH+16).toFixed(1)}" fill="#94a3b8" font-size="9" text-anchor="middle">${MESES[m.mes].slice(0,3)}</text>`).join('');
+      const ly = H - 8;
+      const leg = `<g font-family="sans-serif" font-size="9.5" fill="#94a3b8"><line x1="${padL}" y1="${ly}" x2="${padL+16}" y2="${ly}" stroke="#34d399" stroke-width="1.6"/><text x="${padL+20}" y="${ly+3.5}">Ingresos</text><line x1="${padL+80}" y1="${ly}" x2="${padL+96}" y2="${ly}" stroke="#e8796b" stroke-width="1.6"/><text x="${padL+100}" y="${ly+3.5}">Gastos</text><line x1="${padL+150}" y1="${ly}" x2="${padL+166}" y2="${ly}" stroke="#c9a86a" stroke-width="2.6"/><text x="${padL+170}" y="${ly+3.5}">Balance</text></g>`;
+      return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;margin-top:10px;">${zero}${sIng}${sGas}${sBal}${etiq}${leg}</svg>`;
     }
     function cambiarTipoDolar(t) { tipoDolar = t; localStorage.setItem('tipoDolar', t); cargarCotizaciones(); }
     async function cargarCotizaciones() {
@@ -516,4 +551,4 @@
     render(); renderIngresos(); renderAhorros(); renderInversiones(); cargarCotizaciones();
   </script>
 </body>
-</html>
+  </html>
