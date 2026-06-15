@@ -35,8 +35,9 @@
     .borrar:active { background: none; }
     .total { font-size: 18px; font-weight: bold; text-align: center; }
     .vacio { text-align: center; color: #64748b; padding: 20px; }
-    .filtros { display: flex; gap: 6px; overflow-x: auto; padding: 2px 2px 8px; margin: 4px 0; -webkit-overflow-scrolling: touch; }
-    .chip { flex: 0 0 auto; background: #1e293b; color: #94a3b8; border: 1px solid #334155; border-radius: 999px; padding: 6px 13px; font-size: 13px; white-space: nowrap; }
+    .filtros { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin: 4px 0 10px; padding: 0 2px; }
+    .chip-label { color: #64748b; font-size: 12px; margin-right: 1px; }
+    .chip { flex: 0 0 auto; background: #1e293b; color: #cbd5e1; border: 1px solid #475569; border-radius: 999px; padding: 7px 14px; font-size: 13px; white-space: nowrap; }
     .chip-on { background: #34d399; color: #0f172a; border-color: #34d399; font-weight: 600; }
     .mes-titulo { font-size: 16px; font-weight: bold; margin-bottom: 10px; }
     .mes-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
@@ -390,7 +391,7 @@
       const medios = Array.from(new Set(ingresos.map(i => i.medio || 'Otros')));
       const cats = ['Todos'].concat(medios.sort());
       if (!cats.includes(filtroIngreso)) filtroIngreso = 'Todos';
-      cont.innerHTML = ingresos.length === 0 ? '' : cats.map(c =>
+      cont.innerHTML = ingresos.length === 0 ? '' : '<span class="chip-label">Filtrar:</span>' + cats.map(c =>
         `<button class="chip${filtroIngreso === c ? ' chip-on' : ''}" onclick="setFiltroIngreso('${c.replace(/'/g, "\\'")}')">${c}</button>`).join('');
       const vis = filtroIngreso === 'Todos' ? ingresos : ingresos.filter(i => (i.medio || 'Otros') === filtroIngreso);
       document.getElementById('i-total').textContent = 'Total: ' + totalStr(vis);
@@ -836,20 +837,24 @@
     }
     function confirmarImport() {
       const items = interpretarFilas();
-      // Huellas de lo que ya está cargado, para no duplicar al reimportar el mismo mes
-      const existentes = {};
+      // Huellas de lo que ya está cargado: para no duplicar y para reclasificar al reimportar
+      const refs = {};
       const stores = { gastos: gastos, ingresos: ingresos, ahorros: ahorros, inversiones: inversiones };
       Object.keys(stores).forEach(dest => {
         stores[dest].forEach(o => {
           const h = huellaMov(dest, o.fechaISO || isoDe(o), o.monto, monedaDe(o), o.nota);
-          existentes[h] = (existentes[h] || 0) + 1;
+          (refs[h] = refs[h] || []).push(o);
         });
       });
-      let n = 0, dup = 0;
+      let n = 0, dup = 0, retag = 0;
       items.forEach((it, idx) => {
         const fechaISO = it.fecha ? isoDeFecha(it.fecha) : hoyISO();
         const h = huellaMov(it.destino, fechaISO, it.monto, it.moneda, it.desc);
-        if (existentes[h] > 0) { existentes[h]--; dup++; return; } // ya existe: lo salteamos
+        if (refs[h] && refs[h].length) { // ya existe: no duplico, pero le actualizo el origen
+          const ex = refs[h].shift(); dup++;
+          if (it.origen && (ex.donde === undefined) && ex.medio !== it.origen) { ex.medio = it.origen; retag++; }
+          return;
+        }
         const fechaStr = (it.fecha || new Date()).toLocaleDateString('es-AR');
         const base = { id: Date.now() + idx, monto: it.monto, moneda: it.moneda, nota: it.desc, fecha: fechaStr, fechaISO: fechaISO };
         if (it.destino === 'gastos') gastos.unshift(Object.assign(base, { categoria: catDesde(it.desc, VOZ_CATS) || 'Otros', medio: it.origen || 'Importado' }));
@@ -861,7 +866,10 @@
       guardar(); guardarIngresos(); guardarAhorros(); guardarInversiones();
       render(); renderIngresos(); renderAhorros(); renderInversiones();
       IMP = null;
-      const aviso = dup > 0 ? ` (omití ${dup} repetidos que ya estaban cargados)` : '';
+      let aviso = '';
+      if (dup > 0) aviso += ` (omití ${dup} repetidos`;
+      if (retag > 0) aviso += `${dup > 0 ? ', ' : ' ('}reclasifiqué ${retag} por origen`;
+      if (aviso) aviso += ')';
       document.getElementById('import-panel').innerHTML = `<div class="vacio" style="color:#34d399;">Importé ${n} movimientos${aviso}. Revisalos en cada pestaña.</div>`;
     }
     async function exportarExcel() {
