@@ -35,6 +35,9 @@
     .borrar:active { background: none; }
     .total { font-size: 18px; font-weight: bold; text-align: center; }
     .vacio { text-align: center; color: #64748b; padding: 20px; }
+    .filtros { display: flex; gap: 6px; overflow-x: auto; padding: 2px 2px 8px; margin: 4px 0; -webkit-overflow-scrolling: touch; }
+    .chip { flex: 0 0 auto; background: #1e293b; color: #94a3b8; border: 1px solid #334155; border-radius: 999px; padding: 6px 13px; font-size: 13px; white-space: nowrap; }
+    .chip-on { background: #34d399; color: #0f172a; border-color: #34d399; font-weight: 600; }
     .mes-titulo { font-size: 16px; font-weight: bold; margin-bottom: 10px; }
     .mes-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
     .mes-nav .flecha-mes { width:auto; background:var(--acento-tenue); color:var(--acento-claro); border:1px solid var(--acento-borde); border-radius:8px; padding:3px 18px; font-size:20px; line-height:1.1; }
@@ -91,6 +94,7 @@
       <button id="cancel-ingreso" class="btn-cancelar" onclick="cancelarEdicionIngreso()" style="display:none;">Cancelar edición</button>
     </div>
     <div class="card"><div class="total" id="i-total"></div></div>
+    <div id="i-filtros" class="filtros"></div>
     <div id="i-lista"></div>
   </div>
 
@@ -378,11 +382,20 @@
       document.getElementById('btn-ingreso').textContent = 'Agregar ingreso'; document.getElementById('cancel-ingreso').style.display = 'none';
     }
     function borrarIngreso(id) { ingresos = ingresos.filter(i => i.id !== id); guardarIngresos(); renderIngresos(); }
+    let filtroIngreso = 'Todos';
+    function setFiltroIngreso(v) { filtroIngreso = v; renderIngresos(); }
     function renderIngresos() {
       const lista = document.getElementById('i-lista');
-      document.getElementById('i-total').textContent = 'Total: ' + totalStr(ingresos);
-      if (ingresos.length === 0) { lista.innerHTML = '<div class="vacio">No hay ingresos cargados todavía</div>'; }
-      else { lista.innerHTML = ingresos.map(i => `<div class="gasto"><div class="gasto-info"><strong>${i.categoria}</strong><small>${i.medio} · ${i.fecha}${i.nota ? ' · ' + i.nota : ''}</small></div><div style="display:flex;align-items:center;gap:4px;"><span class="ingreso-monto">${simbolo(monedaDe(i))}${fmtMonto(i.monto)}</span><button class="borrar" onclick="editarIngreso(${i.id})">✏️</button><button class="borrar" onclick="borrarIngreso(${i.id})">🗑️</button></div></div>`).join(''); }
+      const cont = document.getElementById('i-filtros');
+      const medios = Array.from(new Set(ingresos.map(i => i.medio || 'Otros')));
+      const cats = ['Todos'].concat(medios.sort());
+      if (!cats.includes(filtroIngreso)) filtroIngreso = 'Todos';
+      cont.innerHTML = ingresos.length === 0 ? '' : cats.map(c =>
+        `<button class="chip${filtroIngreso === c ? ' chip-on' : ''}" onclick="setFiltroIngreso('${c.replace(/'/g, "\\'")}')">${c}</button>`).join('');
+      const vis = filtroIngreso === 'Todos' ? ingresos : ingresos.filter(i => (i.medio || 'Otros') === filtroIngreso);
+      document.getElementById('i-total').textContent = 'Total: ' + totalStr(vis);
+      if (vis.length === 0) { lista.innerHTML = '<div class="vacio">' + (ingresos.length === 0 ? 'No hay ingresos cargados todavía' : 'No hay ingresos de este origen') + '</div>'; }
+      else { lista.innerHTML = vis.map(i => `<div class="gasto"><div class="gasto-info"><strong>${i.categoria}</strong><small>${i.medio} · ${i.fecha}${i.nota ? ' · ' + i.nota : ''}</small></div><div style="display:flex;align-items:center;gap:4px;"><span class="ingreso-monto">${simbolo(monedaDe(i))}${fmtMonto(i.monto)}</span><button class="borrar" onclick="editarIngreso(${i.id})">✏️</button><button class="borrar" onclick="borrarIngreso(${i.id})">🗑️</button></div></div>`).join(''); }
       actualizarInicio();
     }
 
@@ -729,13 +742,14 @@
         pages = await extraerItemsPDF(file);
       } catch (e) { panel.innerHTML = '<div class="vacio">No pude leer el PDF ('+e.message+').</div>'; return; }
       let filas = parseBBVA(lineas);
-      if (filas.length) filas = filas.concat(parseBBVAMov(pages));
-      else filas = parseMercadoPago(pages);
+      let origen = '';
+      if (filas.length) { filas = filas.concat(parseBBVAMov(pages)); origen = 'BBVA'; }
+      else { filas = parseMercadoPago(pages); if (filas.length) origen = 'Mercado Pago'; }
       if (!filas.length) {
         panel.innerHTML = '<div class="vacio">No reconocí movimientos en este PDF. Por ahora leo resúmenes de BBVA y de Mercado Pago.</div>';
         return;
       }
-      IMP = { headers: ['Fecha','Comercio','Importe'], filas };
+      IMP = { headers: ['Fecha','Comercio','Importe'], filas, origen };
       mostrarMapeo();
     }
     async function archivoElegido(input) {
@@ -754,7 +768,7 @@
         const headers = (rows[hr]||[]).map(h=>String(h).trim());
         const filas = rows.slice(hr+1).filter(r => r.some(c=>String(c).trim()!==''));
         if (!filas.length) { panel.innerHTML = '<div class="vacio">No encontré filas de datos en el archivo.</div>'; input.value=''; return; }
-        IMP = { headers, filas };
+        IMP = { headers, filas, origen: '' };
         mostrarMapeo();
       } catch (e) { panel.innerHTML = '<div class="vacio">No pude leer el archivo ('+e.message+').</div>'; }
       input.value = '';
@@ -775,6 +789,7 @@
           <label>Descripción</label><select id="map-desc"><option value="-1">— ninguna —</option>${h.map((hh,i)=>`<option value="${i}" ${i===cD?'selected':''}>${hh||('Columna '+(i+1))}</option>`).join('')}</select>
           <label>Moneda</label><select id="map-moneda"><option value="fija-ARS">Fija: Peso (AR$)</option><option value="fija-USD">Fija: Dólar (US$)</option><option value="fija-EUR">Fija: Euro (€)</option>${h.map((hh,i)=>`<option value="${i}">Columna: ${hh||('Columna '+(i+1))}</option>`).join('')}</select>
           <label>A qué pestaña va</label><select id="map-destino"><option value="signo">Por signo (+ Ingresos / − Gastos)</option><option value="gastos">Todo a Gastos</option><option value="ingresos">Todo a Ingresos</option><option value="ahorros">Todo a Ahorros</option><option value="inversiones">Todo a Inversiones</option></select>
+          <label>Origen (Medio)</label><select id="map-origen">${['Mercado Pago','BBVA','Galicia','Santander','Nación','Wise','Efectivo','Otros'].map(o=>`<option ${o===(IMP.origen||'Otros')?'selected':''}>${o}</option>`).join('')}</select>
           <button onclick="previsualizarImport()">Previsualizar</button>
           <div id="import-preview"></div>
         </div>`;
@@ -786,7 +801,8 @@
         montoC: +document.getElementById('map-monto').value,
         descC: +document.getElementById('map-desc').value,
         monV: document.getElementById('map-moneda').value,
-        destino: document.getElementById('map-destino').value
+        destino: document.getElementById('map-destino').value,
+        origen: (document.getElementById('map-origen') || {}).value || 'Otros'
       };
     }
     function interpretarFilas() {
@@ -802,7 +818,7 @@
         else moneda = monedaImport(r[+m.monV]) || 'ARS';
         let destino = m.destino;
         if (destino === 'signo') destino = monto >= 0 ? 'ingresos' : 'gastos';
-        out.push({ monto: Math.abs(monto), moneda, desc, fecha: fd, destino });
+        out.push({ monto: Math.abs(monto), moneda, desc, fecha: fd, destino, origen: m.origen });
       }
       return out;
     }
@@ -836,8 +852,8 @@
         if (existentes[h] > 0) { existentes[h]--; dup++; return; } // ya existe: lo salteamos
         const fechaStr = (it.fecha || new Date()).toLocaleDateString('es-AR');
         const base = { id: Date.now() + idx, monto: it.monto, moneda: it.moneda, nota: it.desc, fecha: fechaStr, fechaISO: fechaISO };
-        if (it.destino === 'gastos') gastos.unshift(Object.assign(base, { categoria: catDesde(it.desc, VOZ_CATS) || 'Otros', medio: medioDesde(it.desc) || 'Importado' }));
-        else if (it.destino === 'ingresos') ingresos.unshift(Object.assign(base, { categoria: catDesde(it.desc, VOZ_CATS_ING) || 'Otros', medio: medioDesde(it.desc) || 'Importado' }));
+        if (it.destino === 'gastos') gastos.unshift(Object.assign(base, { categoria: catDesde(it.desc, VOZ_CATS) || 'Otros', medio: it.origen || 'Importado' }));
+        else if (it.destino === 'ingresos') ingresos.unshift(Object.assign(base, { categoria: catDesde(it.desc, VOZ_CATS_ING) || 'Otros', medio: it.origen || 'Importado' }));
         else if (it.destino === 'ahorros') ahorros.unshift(Object.assign(base, { donde: 'Importado' }));
         else if (it.destino === 'inversiones') inversiones.unshift(Object.assign(base, { tipo: 'Otros', ticker: '' }));
         n++;
