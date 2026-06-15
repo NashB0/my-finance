@@ -36,6 +36,10 @@
     .total { font-size: 18px; font-weight: bold; text-align: center; }
     .vacio { text-align: center; color: #64748b; padding: 20px; }
     .mes-titulo { font-size: 16px; font-weight: bold; margin-bottom: 10px; }
+    .mes-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
+    .mes-nav .flecha-mes { width:auto; background:var(--acento-tenue); color:var(--acento-claro); border:1px solid var(--acento-borde); border-radius:8px; padding:3px 18px; font-size:20px; line-height:1.1; }
+    .mes-nav .flecha-mes:active { background:rgba(201,168,106,.2); }
+    .mes-actual { font-size:14px; font-weight:600; letter-spacing:.04em; color:#cbd5e1; }
     .fila { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 15px; }
     .balance { border-top: 1px solid #334155; margin-top: 8px; padding-top: 8px; font-weight: bold; }
     .verde { color: #34d399; font-weight: bold; } .rojo { color: #e8796b; font-weight: bold; }
@@ -506,43 +510,49 @@
       const etiq = coords.map(c => `<text x="${c.x.toFixed(1)}" y="${H-8}" fill="#94a3b8" font-size="9" text-anchor="middle">${MESES[c.p.mes].slice(0,3)}</text>`).join('');
       return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;margin-top:10px;">${zeroLine}${linea}${circ}${etiq}</svg>`;
     }
+    let mesVista = null;
+    function cambiarMes(delta) {
+      if (!mesVista) { const h = new Date(); mesVista = { anio: h.getFullYear(), mes: h.getMonth() }; }
+      let m = mesVista.mes + delta, a = mesVista.anio;
+      if (m < 0) { m = 11; a--; } if (m > 11) { m = 0; a++; }
+      mesVista = { anio: a, mes: m };
+      renderInicio();
+    }
     function renderInicio() {
       const cont = document.getElementById('resumen-mensual');
       if (!cotiz) { cont.innerHTML = ''; return; }
-      const meses = {};
-      function agrupar(items, tipo) { items.forEach(item => { const d = fechaDe(item); const k = d.getFullYear()+'-'+String(d.getMonth()).padStart(2,'0'); if (!meses[k]) meses[k] = { anio:d.getFullYear(), mes:d.getMonth(), ingresos:0, gastos:0 }; meses[k][tipo] += aUSD(item.monto, monedaDe(item)); }); }
-      agrupar(ingresos, 'ingresos'); agrupar(gastos, 'gastos');
-      const claves = Object.keys(meses).sort();
-      if (!claves.length) { cont.innerHTML = ''; return; }
-      const datos = claves.map(k => meses[k]);
-      cont.innerHTML = `<div class="card"><div class="patri-label">Resumen mensual (US$)</div>${construirGraficoMensual(datos)}</div>`;
+      if (!mesVista) { const h = new Date(); mesVista = { anio: h.getFullYear(), mes: h.getMonth() }; }
+      const dias = new Date(mesVista.anio, mesVista.mes + 1, 0).getDate();
+      const dIng = new Array(dias + 1).fill(0), dGas = new Array(dias + 1).fill(0);
+      function acum(items, arr) { items.forEach(it => { const d = fechaDe(it); if (d.getFullYear() === mesVista.anio && d.getMonth() === mesVista.mes) arr[d.getDate()] += aUSD(it.monto, monedaDe(it)); }); }
+      acum(ingresos, dIng); acum(gastos, dGas);
+      const totIng = dIng.reduce((a, b) => a + b, 0), totGas = dGas.reduce((a, b) => a + b, 0), bal = totIng - totGas;
+      const hay = totIng > 0 || totGas > 0;
+      const grafico = hay ? construirGraficoDiario(dIng, dGas, dias) : '<div class="vacio">Sin movimientos en este mes.</div>';
+      cont.innerHTML = `<div class="card">
+        <div class="mes-nav"><button class="flecha-mes" onclick="cambiarMes(-1)">‹</button><div class="mes-actual">${MESES[mesVista.mes]} ${mesVista.anio}</div><button class="flecha-mes" onclick="cambiarMes(1)">›</button></div>
+        <div class="desglose" style="margin-top:4px;"><div><small>Ingresos</small><span class="verde">${fmtUSD(totIng)}</span></div><div><small>Gastos</small><span class="rojo">${fmtUSD(totGas)}</span></div><div><small>Balance</small><span class="${bal >= 0 ? 'oro' : 'rojo'}">${fmtUSD(bal)}</span></div></div>
+        ${grafico}</div>`;
     }
-    function construirGraficoMensual(datos) {
-      const W = 320, H = 190, padL = 10, padR = 10, padT = 16, padB = 48;
-      const plotW = W - padL - padR, plotH = H - padT - padB, n = datos.length;
-      const ing = datos.map(m => m.ingresos);
-      const gas = datos.map(m => -m.gastos);
-      const bal = datos.map(m => m.ingresos - m.gastos);
-      const todos = ing.concat(gas).concat(bal).concat([0]);
-      let min = Math.min(...todos), max = Math.max(...todos);
-      if (min === max) { min -= 1; max += 1; }
-      const X = i => padL + (n === 1 ? plotW/2 : plotW*i/(n-1));
-      const Y = v => padT + plotH*(1-(v-min)/(max-min));
-      let zero = '';
-      if (min < 0 && max > 0) { const yz = Y(0); zero = `<line x1="${padL}" y1="${yz.toFixed(1)}" x2="${W-padR}" y2="${yz.toFixed(1)}" stroke="#334155" stroke-dasharray="3 3" stroke-width="1"/>`; }
-      function serie(vals, color, wd, dotR) {
-        if (n === 1) { return `<circle cx="${X(0).toFixed(1)}" cy="${Y(vals[0]).toFixed(1)}" r="3.5" fill="${color}"/>`; }
-        const pts = vals.map((v,i) => `${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
-        let d = dotR ? vals.map((v,i) => `<circle cx="${X(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="${dotR}" fill="${color}"/>`).join('') : '';
-        return `<polyline fill="none" stroke="${color}" stroke-width="${wd}" points="${pts}"/>${d}`;
+    function construirGraficoDiario(dIng, dGas, dias) {
+      const W = 320, H = 180, padL = 10, padR = 10, padT = 14, padB = 44;
+      const plotW = W - padL - padR, plotH = H - padT - padB;
+      const vals = [0]; for (let i = 1; i <= dias; i++) { vals.push(dIng[i]); vals.push(-dGas[i]); }
+      let min = Math.min(...vals), max = Math.max(...vals); if (min === max) { min -= 1; max += 1; }
+      const Y = v => padT + plotH * (1 - (v - min) / (max - min));
+      const bw = plotW / dias, yz = Y(0);
+      let barras = '';
+      for (let i = 1; i <= dias; i++) {
+        const x = padL + bw * (i - 1) + bw * 0.18, w = bw * 0.64;
+        if (dIng[i] > 0) { const y = Y(dIng[i]); barras += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(0, yz - y).toFixed(1)}" fill="#34d399" rx="1"/>`; }
+        if (dGas[i] > 0) { const y2 = Y(-dGas[i]); barras += `<rect x="${x.toFixed(1)}" y="${yz.toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(0, y2 - yz).toFixed(1)}" fill="#e8796b" rx="1"/>`; }
       }
-      const sIng = serie(ing, '#34d399', 1.4, 2);
-      const sGas = serie(gas, '#e8796b', 1.4, 2);
-      const sBal = serie(bal, '#c9a86a', 2.6, 2.8);
-      const etiq = datos.map((m,i) => `<text x="${X(i).toFixed(1)}" y="${(padT+plotH+16).toFixed(1)}" fill="#94a3b8" font-size="9" text-anchor="middle">${MESES[m.mes].slice(0,3)}</text>`).join('');
-      const ly = H - 8;
-      const leg = `<g font-family="sans-serif" font-size="9.5" fill="#94a3b8"><line x1="${padL}" y1="${ly}" x2="${padL+16}" y2="${ly}" stroke="#34d399" stroke-width="1.6"/><text x="${padL+20}" y="${ly+3.5}">Ingresos</text><line x1="${padL+80}" y1="${ly}" x2="${padL+96}" y2="${ly}" stroke="#e8796b" stroke-width="1.6"/><text x="${padL+100}" y="${ly+3.5}">Gastos</text><line x1="${padL+150}" y1="${ly}" x2="${padL+166}" y2="${ly}" stroke="#c9a86a" stroke-width="2.6"/><text x="${padL+170}" y="${ly+3.5}">Balance</text></g>`;
-      return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;margin-top:10px;">${zero}${sIng}${sGas}${sBal}${etiq}${leg}</svg>`;
+      const zline = `<line x1="${padL}" y1="${yz.toFixed(1)}" x2="${W - padR}" y2="${yz.toFixed(1)}" stroke="#475569" stroke-width="1"/>`;
+      const marcas = [1]; for (let d = 5; d < dias; d += 5) marcas.push(d); if (marcas[marcas.length - 1] !== dias) marcas.push(dias);
+      let etiq = ''; marcas.forEach(d => { const x = padL + bw * (d - 1) + bw * 0.5; etiq += `<text x="${x.toFixed(1)}" y="${(padT + plotH + 15).toFixed(1)}" fill="#94a3b8" font-size="9" text-anchor="middle">${d}</text>`; });
+      const ly = H - 6;
+      const leg = `<g font-family="sans-serif" font-size="9.5" fill="#94a3b8"><rect x="${padL}" y="${ly - 8}" width="10" height="8" rx="1" fill="#34d399"/><text x="${padL + 15}" y="${ly - 1}">Ingresos</text><rect x="${padL + 78}" y="${ly - 8}" width="10" height="8" rx="1" fill="#e8796b"/><text x="${padL + 93}" y="${ly - 1}">Gastos</text></g>`;
+      return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;margin-top:10px;">${zline}${barras}${etiq}${leg}</svg>`;
     }
     function cambiarTipoDolar(t) { tipoDolar = t; localStorage.setItem('tipoDolar', t); cargarCotizaciones(); }
     async function cargarCotizaciones() {
