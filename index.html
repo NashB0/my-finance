@@ -698,6 +698,29 @@
       }
       return filas;
     }
+    function parseBBVAMov(pages) {
+      const reMonto = /^-?[\d.]+,\d{2}$/;
+      let anio = new Date().getFullYear();
+      for (const items of pages) { let hit=false; for (const it of items) { const m=it.s.match(/\b\d{2}\/\d{2}\/(\d{4})\b/); if(m){anio=+m[1];hit=true;break;} } if(hit) break; }
+      const filas = [];
+      for (const items of pages) {
+        const fechas = items.filter(it => it.x < 90 && /^\d{2}\/\d{2}$/.test(it.s));
+        for (const f of fechas) {
+          const yd = f.y;
+          const row = items.filter(it => Math.abs(it.y - yd) <= 4);
+          const concepto = row.filter(it => it.x >= 125 && it.x < 380).sort((a,b)=>a.x-b.x).map(it=>it.s).join(' ').replace(/\s+/g,' ').trim();
+          if (/PAGO CON VISA DEBITO/i.test(concepto)) continue; // ya vienen de la tabla de Compras
+          const deb = row.filter(it => reMonto.test(it.s) && it.x < 445).sort((a,b)=>a.x-b.x)[0];
+          const cred = row.filter(it => reMonto.test(it.s) && it.x >= 445 && it.x < 515).sort((a,b)=>a.x-b.x)[0];
+          let valor = null;
+          if (cred) valor = cred.s.replace('-','');
+          else if (deb) valor = deb.s.charAt(0)==='-' ? deb.s : ('-'+deb.s);
+          if (!valor) continue;
+          filas.push([f.s + '/' + anio, concepto, valor]);
+        }
+      }
+      return filas;
+    }
     async function importarPDF(file, panel) {
       try { await cargarPDFjs(); } catch (e) { panel.innerHTML = '<div class="vacio">'+e.message+'</div>'; return; }
       let lineas, pages;
@@ -706,7 +729,8 @@
         pages = await extraerItemsPDF(file);
       } catch (e) { panel.innerHTML = '<div class="vacio">No pude leer el PDF ('+e.message+').</div>'; return; }
       let filas = parseBBVA(lineas);
-      if (!filas.length) filas = parseMercadoPago(pages);
+      if (filas.length) filas = filas.concat(parseBBVAMov(pages));
+      else filas = parseMercadoPago(pages);
       if (!filas.length) {
         panel.innerHTML = '<div class="vacio">No reconocí movimientos en este PDF. Por ahora leo resúmenes de BBVA y de Mercado Pago.</div>';
         return;
@@ -791,11 +815,25 @@
       const muestra = items.slice(0,3).map(i=>`<div class="fila"><span>${i.fecha?i.fecha.toLocaleDateString('es-AR'):'sin fecha'} · ${i.desc||'—'}</span><span>${simbolo(i.moneda)}${fmtMonto(i.monto)} → ${i.destino}</span></div>`).join('');
       prev.innerHTML = `<div style="margin-top:12px;"><div class="patri-label">Vista previa · ${items.length} movimientos</div><div style="font-size:13px;color:#94a3b8;margin-bottom:8px;">${resumen}</div>${muestra}<button onclick="confirmarImport()">Importar ${items.length} movimientos</button></div>`;
     }
+    function huellaMov(destino, fechaISO, monto, moneda, nota) {
+      return destino + '|' + fechaISO + '|' + Number(monto).toFixed(2) + '|' + (moneda || 'ARS') + '|' + String(nota || '').trim().toLowerCase();
+    }
     function confirmarImport() {
       const items = interpretarFilas();
-      let n = 0;
+      // Huellas de lo que ya está cargado, para no duplicar al reimportar el mismo mes
+      const existentes = {};
+      const stores = { gastos: gastos, ingresos: ingresos, ahorros: ahorros, inversiones: inversiones };
+      Object.keys(stores).forEach(dest => {
+        stores[dest].forEach(o => {
+          const h = huellaMov(dest, o.fechaISO || isoDe(o), o.monto, monedaDe(o), o.nota);
+          existentes[h] = (existentes[h] || 0) + 1;
+        });
+      });
+      let n = 0, dup = 0;
       items.forEach((it, idx) => {
         const fechaISO = it.fecha ? isoDeFecha(it.fecha) : hoyISO();
+        const h = huellaMov(it.destino, fechaISO, it.monto, it.moneda, it.desc);
+        if (existentes[h] > 0) { existentes[h]--; dup++; return; } // ya existe: lo salteamos
         const fechaStr = (it.fecha || new Date()).toLocaleDateString('es-AR');
         const base = { id: Date.now() + idx, monto: it.monto, moneda: it.moneda, nota: it.desc, fecha: fechaStr, fechaISO: fechaISO };
         if (it.destino === 'gastos') gastos.unshift(Object.assign(base, { categoria: catDesde(it.desc, VOZ_CATS) || 'Otros', medio: medioDesde(it.desc) || 'Importado' }));
@@ -807,7 +845,8 @@
       guardar(); guardarIngresos(); guardarAhorros(); guardarInversiones();
       render(); renderIngresos(); renderAhorros(); renderInversiones();
       IMP = null;
-      document.getElementById('import-panel').innerHTML = `<div class="vacio" style="color:#34d399;">Importé ${n} movimientos. Revisalos en cada pestaña.</div>`;
+      const aviso = dup > 0 ? ` (omití ${dup} repetidos que ya estaban cargados)` : '';
+      document.getElementById('import-panel').innerHTML = `<div class="vacio" style="color:#34d399;">Importé ${n} movimientos${aviso}. Revisalos en cada pestaña.</div>`;
     }
     async function exportarExcel() {
       try { await cargarXLSX(); } catch (e) { alert(e.message); return; }
