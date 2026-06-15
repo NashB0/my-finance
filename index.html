@@ -521,15 +521,15 @@
       const Y = v => padT + plotH*(1-(v-min)/(max-min));
       let zero = '';
       if (min < 0 && max > 0) { const yz = Y(0); zero = `<line x1="${padL}" y1="${yz.toFixed(1)}" x2="${W-padR}" y2="${yz.toFixed(1)}" stroke="#334155" stroke-dasharray="3 3" stroke-width="1"/>`; }
-      function serie(vals, color, wd, dot) {
+      function serie(vals, color, wd, dotR) {
         if (n === 1) { return `<circle cx="${X(0).toFixed(1)}" cy="${Y(vals[0]).toFixed(1)}" r="3.5" fill="${color}"/>`; }
         const pts = vals.map((v,i) => `${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
-        let d = dot ? vals.map((v,i) => `<circle cx="${X(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="2.6" fill="${color}"/>`).join('') : '';
+        let d = dotR ? vals.map((v,i) => `<circle cx="${X(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="${dotR}" fill="${color}"/>`).join('') : '';
         return `<polyline fill="none" stroke="${color}" stroke-width="${wd}" points="${pts}"/>${d}`;
       }
-      const sIng = serie(ing, '#34d399', 1.4, false);
-      const sGas = serie(gas, '#e8796b', 1.4, false);
-      const sBal = serie(bal, '#c9a86a', 2.6, true);
+      const sIng = serie(ing, '#34d399', 1.4, 2);
+      const sGas = serie(gas, '#e8796b', 1.4, 2);
+      const sBal = serie(bal, '#c9a86a', 2.6, 2.8);
       const etiq = datos.map((m,i) => `<text x="${X(i).toFixed(1)}" y="${(padT+plotH+16).toFixed(1)}" fill="#94a3b8" font-size="9" text-anchor="middle">${MESES[m.mes].slice(0,3)}</text>`).join('');
       const ly = H - 8;
       const leg = `<g font-family="sans-serif" font-size="9.5" fill="#94a3b8"><line x1="${padL}" y1="${ly}" x2="${padL+16}" y2="${ly}" stroke="#34d399" stroke-width="1.6"/><text x="${padL+20}" y="${ly+3.5}">Ingresos</text><line x1="${padL+80}" y1="${ly}" x2="${padL+96}" y2="${ly}" stroke="#e8796b" stroke-width="1.6"/><text x="${padL+100}" y="${ly+3.5}">Gastos</text><line x1="${padL+150}" y1="${ly}" x2="${padL+166}" y2="${ly}" stroke="#c9a86a" stroke-width="2.6"/><text x="${padL+170}" y="${ly+3.5}">Balance</text></g>`;
@@ -551,4 +551,4 @@
     render(); renderIngresos(); renderAhorros(); renderInversiones(); cargarCotizaciones();
   </script>
 </body>
-  </html>
+</html>
