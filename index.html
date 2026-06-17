@@ -411,10 +411,7 @@
     function renderIngresos() {
       const lista = document.getElementById('i-lista');
       const cont = document.getElementById('i-filtros');
-      const base = bancosActivos();
-      const presentes = Array.from(new Set(ingresos.map(i => i.medio || 'Otros')));
-      const extra = presentes.filter(m => !base.includes(m)).sort();
-      const cats = ['Todos'].concat(base, extra);
+      const cats = ['Todos'].concat(bancosActivos());
       if (!cats.includes(filtroIngreso)) filtroIngreso = 'Todos';
       cont.innerHTML = ingresos.length === 0 ? '' : '<span class="chip-label">Filtrar:</span>' + cats.map(c =>
         `<button class="chip${filtroIngreso === c ? ' chip-on' : ''}" onclick="setFiltroIngreso('${c.replace(/'/g, "\\'")}')">${c}</button>`).join('');
