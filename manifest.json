@@ -1,6 +1,8 @@
 {
   "name": "Finzen",
-  "short_name": "Finzen",
+    "short_name": "Finzen",
+    "description": "Controlá tus ingresos, gastos, ahorros e inversiones en un solo lugar.",
+    "start_url": "./index.html",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0d1424",
