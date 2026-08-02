@@ -13,7 +13,7 @@ border-radius:8px;overflow-x:auto;max-height:70vh;overflow-y:auto}
 </style>
 </head>
 <body>
-<h1>Diagnóstico pdf.js</h1>
+<h1>Diagnóstico pdf.js — líneas</h1>
 <input type="file" id="f" accept="application/pdf"><br>
 <label>Página: <input type="number" id="pg" value="1" min="1" style="width:60px"></label>
 <button id="copy">Copiar salida</button>
@@ -27,27 +27,47 @@ function log(t){ out.textContent += t + "\n"; }
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
+// Agrupa los items de una página en líneas por coordenada Y
+function agruparLineas(items, tol){
+  tol = tol || 3;
+  const limpios = items
+    .filter(it => it.str && it.str.trim() !== "")
+    .map(it => ({
+      texto: it.str,
+      x: it.transform[4],
+      der: it.transform[4] + it.width,
+      y: it.transform[5]
+    }));
+
+  const lineas = [];
+  limpios.forEach(it => {
+    let l = lineas.find(L => Math.abs(L.y - it.y) <= tol);
+    if(!l){ l = {y: it.y, items: []}; lineas.push(l); }
+    l.items.push(it);
+  });
+
+  lineas.sort((a,b) => b.y - a.y);              // de arriba hacia abajo
+  lineas.forEach(l => l.items.sort((a,b) => a.x - b.x));  // izq a der
+  lineas.forEach(l => l.texto = l.items.map(i => i.texto.trim()).join(" "));
+  return lineas;
+}
+
 document.getElementById('f').addEventListener('change', async e => {
   const file = e.target.files[0];
   if(!file) return;
   out.textContent = "";
   try{
     log("Archivo: " + file.name);
-    log("pdf.js versión: " + pdfjsLib.version);
     const buf = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({data: buf}).promise;
     log("Páginas totales: " + pdf.numPages);
     const n = Math.min(parseInt(document.getElementById('pg').value)||1, pdf.numPages);
     const page = await pdf.getPage(n);
     const tc = await page.getTextContent();
-    log("Items en página " + n + ": " + tc.items.length);
-    log("--- y | x | derecha | texto ---");
-    tc.items.slice(0,60).forEach(it=>{
-      const x = it.transform[4], y = it.transform[5];
-      log(y.toFixed(1) + " | " + x.toFixed(1) + " | " +
-          (x + it.width).toFixed(1) + " | " + JSON.stringify(it.str));
-    });
-    if(tc.items.length > 60) log("… (" + (tc.items.length-60) + " items más)");
+    const lineas = agruparLineas(tc.items, 3);
+    log("Líneas en página " + n + ": " + lineas.length);
+    log("--- y | texto ---");
+    lineas.forEach(l => log(l.y.toFixed(1) + " | " + l.texto));
   }catch(err){
     log("ERROR: " + err.message);
   }
