@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>PDF Test</title>
+<title>PDF Test v5</title>
 <style>
 body{background:#0d1424;color:#e8e8e8;font:14px system-ui;padding:12px}
 h1{color:#c9a86a;font-size:16px}
@@ -13,7 +13,7 @@ border-radius:8px;overflow-x:auto;max-height:70vh;overflow-y:auto}
 </style>
 </head>
 <body>
-<h1>Parser Mercado Pago</h1>
+<h1>Parser Mercado Pago — v5</h1>
 <input type="file" id="f" accept="application/pdf"><br>
 <button id="copy">Copiar salida</button>
 <div id="out">Elegí el PDF de Mercado Pago…</div>
@@ -45,29 +45,37 @@ function agruparLineas(items, tol){
   return lineas;
 }
 
-// "$ -1.479,55" -> -1479.55
 function numAR(s){
   return parseFloat(s.replace(/[$\s]/g,"").replace(/\./g,"").replace(",","."));
 }
 
 const RE_MP = /^(\d{2}-\d{2}-\d{4})\s+(.*?)\s*(\d{9,})\s+(\$\s*-?[\d.]+,\d{2})\s+(\$\s*-?[\d.]+,\d{2})$/;
 
-function parseMercadoPago(lineasTodas){
+function esFragmentoMP(t){
+  if(!t) return false;
+  const s = t.trim();
+  if(RE_MP.test(s)) return false;
+  if(/\d{2}-\d{2}-\d{4}/.test(s)) return false;
+  if(/\$\s*-?[\d.]+,\d{2}/.test(s)) return false;
+  if(/^\d+\/\d+$/.test(s)) return false;
+  if(/^(operación|ID de la|Fecha|Descripción|Valor|Saldo)$/i.test(s)) return false;
+  return true;
+}
+
+function parseMercadoPago(lineas){
   const movs = [];
-  const esFragmento = t => t && !RE_MP.test(t) && !/\d{2}-\d{2}-\d{4}/.test(t)
-                            && !/\$\s*-?[\d.]+,\d{2}/.test(t) && !/^\d+\/\d+$/.test(t)
-                            && !/^(operación|ID de la|Fecha|Descripción|Valor|Saldo)$/i.test(t.trim());
-  for(let i=0; i<lineasTodas.length; i++){
-    const L = lineasTodas[i];
+  for(let i=0; i<lineas.length; i++){
+    const L = lineas[i];
     const m = L.texto.match(RE_MP);
     if(!m) continue;
     let antes = "", desp = "";
-    const A = lineasTodas[i-1], D = lineasTodas[i+1];
-    if(A && Math.abs(A.y - L.y) < 12 && esFragmento(A.texto)) antes = A.texto;
-    if(D && Math.abs(D.y - L.y) < 12 && esFragmento(D.texto)) desp = D.texto;
-    let desc = (antes + " " + m[2].trim() + " " + desp).replace(/\s+/g," ").trim();
-    const [d,mo,a] = m[1].split("-");
-    movs.push({fecha: a+"-"+mo+"-"+d, monto: numAR(m[4]), moneda: "ARS", descripcion: desc});
+    const A = lineas[i-1], D = lineas[i+1];
+    if(A && Math.abs(A.y - L.y) < 12 && esFragmentoMP(A.texto)) antes = A.texto;
+    if(D && Math.abs(D.y - L.y) < 12 && esFragmentoMP(D.texto)) desp = D.texto;
+    const desc = (antes + " " + m[2].trim() + " " + desp).replace(/\s+/g," ").trim();
+    const p = m[1].split("-");
+    movs.push({fecha: p[2]+"-"+p[1]+"-"+p[0], monto: numAR(m[4]),
+               moneda: "ARS", descripcion: desc});
   }
   return movs;
 }
@@ -77,6 +85,7 @@ document.getElementById('f').addEventListener('change', async e => {
   if(!file) return;
   out.textContent = "";
   try{
+    log("VERSION 5");
     const buf = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({data: buf}).promise;
     let todas = [];
@@ -87,7 +96,7 @@ document.getElementById('f').addEventListener('change', async e => {
     }
     log("Páginas: " + pdf.numPages + " | Líneas: " + todas.length);
     const movs = parseMercadoPago(todas);
-    log("MOVIMIENTOS DETECTADOS: " + movs.length);
+    log("MOVIMIENTOS: " + movs.length);
     let ing=0, gas=0, si=0, sg=0;
     movs.forEach(m => { if(m.monto>=0){ing++; si+=m.monto;} else {gas++; sg+=m.monto;} });
     log("Ingresos: " + ing + "  suma: " + si.toFixed(2));
