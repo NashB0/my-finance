@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>PDF Test v11</title>
+<title>PDF Test v12</title>
 <style>
 body{background:#0d1424;color:#e8e8e8;font:14px system-ui;padding:12px}
 h1{color:#c9a86a;font-size:16px}
@@ -13,7 +13,7 @@ border-radius:8px;overflow-x:auto;max-height:70vh;overflow-y:auto}
 </style>
 </head>
 <body>
-<h1>Parsers PDF — v11 (MP + ING + BBVA)</h1>
+<h1>Parsers PDF — v12</h1>
 <input type="file" id="f" accept="application/pdf"><br>
 <button id="copy">Copiar salida</button>
 <div id="out">Elegí un PDF…</div>
@@ -102,7 +102,7 @@ function parseMercadoPago(lineas){
   return movs;
 }
 
-/* ---------- ING (rotada 90°) ---------- */
+/* ---------- ING ---------- */
 function colING(y){
   if(y < 60)  return "fecha";
   if(y < 150) return "categoria";
@@ -131,19 +131,18 @@ function parseING(filas){
 }
 
 /* ---------- BBVA ---------- */
-// columnas por borde derecho: débito 429.2 | crédito 501.2 | saldo 574.0
 function parseBBVA(lineas, anio){
   const movs = [];
   lineas.forEach(L => {
     let fecha = null, concepto = [], monto = null;
     L.items.forEach(it => {
-      if(it.x < 95 && /^\d{2}\/\d{2}$/.test(it.texto)) fecha = it.texto;
-      else if(it.x > 120 && it.x < 380) concepto.push(it.texto);
-      else if(/^-?[\d.]+,\d{2}$/.test(it.texto)){
-        if(Math.abs(it.der - 429.2) < 6) monto = numAR(it.texto);        // débito
-        else if(Math.abs(it.der - 501.2) < 6) monto = Math.abs(numAR(it.texto)); // crédito
-        // saldo (574) se ignora
+      if(it.x < 95 && /^\d{2}\/\d{2}$/.test(it.texto)){ fecha = it.texto; return; }
+      if(/^-?[\d.]+,\d{2}$/.test(it.texto) && it.der > 360){
+        if(Math.abs(it.der - 429.2) < 6) monto = numAR(it.texto);
+        else if(Math.abs(it.der - 501.2) < 6) monto = Math.abs(numAR(it.texto));
+        return;
       }
+      if(it.x > 120 && it.x < 350) concepto.push(it.texto);
     });
     if(!fecha || monto === null || isNaN(monto)) return;
     const p = fecha.split("/");
@@ -166,22 +165,32 @@ document.getElementById('f').addEventListener('change', async e => {
   if(!file) return;
   out.textContent = "";
   try{
-    log("VERSION 11");
+    log("VERSION 12");
     const buf = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({data: buf}).promise;
 
-    let porY = [], porX = [], textoTodo = "";
+    // primero: texto completo para detectar banco
+    const paginas = [];
+    let textoTodo = "";
     for(let p=1; p<=pdf.numPages; p++){
       const page = await pdf.getPage(p);
       const tc = await page.getTextContent();
       const its = itemsLimpios(tc);
-      textoTodo += its.map(i => i.texto).join(" ") + "\n";
-      if(page.rotate === 90 || page.rotate === 270) porX = porX.concat(agruparPorX(its, 10));
-      else porY = porY.concat(agruparPorY(its, 3));
+      const txt = its.map(i => i.texto).join(" ");
+      paginas.push({rot: page.rotate, items: its, texto: txt});
+      textoTodo += txt + "\n";
     }
 
     const banco = detectarBanco(textoTodo);
     log("Páginas: " + pdf.numPages + " | BANCO: " + banco);
+
+    let porY = [], porX = [];
+    paginas.forEach(pg => {
+      // BBVA: solo páginas de "Movimientos en cuentas"
+      if(banco === "BBVA" && !/Movimientos en cuentas/i.test(pg.texto)) return;
+      if(pg.rot === 90 || pg.rot === 270) porX = porX.concat(agruparPorX(pg.items, 10));
+      else porY = porY.concat(agruparPorY(pg.items, 3));
+    });
 
     let movs = [];
     if(banco === "MP") movs = parseMercadoPago(porY);
