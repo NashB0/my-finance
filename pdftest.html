@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PDF Test</title>
+<style>
+body{background:#0d1424;color:#e8e8e8;font:14px system-ui;padding:12px}
+h1{color:#c9a86a;font-size:16px}
+button,input{margin:6px 0;font-size:14px}
+#out{white-space:pre;font:11px monospace;background:#111c30;padding:8px;
+border-radius:8px;overflow-x:auto;max-height:70vh;overflow-y:auto}
+</style>
+</head>
+<body>
+<h1>Diagnóstico pdf.js</h1>
+<input type="file" id="f" accept="application/pdf"><br>
+<label>Página: <input type="number" id="pg" value="1" min="1" style="width:60px"></label>
+<button id="copy">Copiar salida</button>
+<div id="out">Elegí un PDF…</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+const out = document.getElementById('out');
+function log(t){ out.textContent += t + "\n"; }
+
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+document.getElementById('f').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if(!file) return;
+  out.textContent = "";
+  try{
+    log("Archivo: " + file.name);
+    log("pdf.js versión: " + pdfjsLib.version);
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({data: buf}).promise;
+    log("Páginas totales: " + pdf.numPages);
+    const n = Math.min(parseInt(document.getElementById('pg').value)||1, pdf.numPages);
+    const page = await pdf.getPage(n);
+    const tc = await page.getTextContent();
+    log("Items en página " + n + ": " + tc.items.length);
+    log("--- y | x | derecha | texto ---");
+    tc.items.slice(0,60).forEach(it=>{
+      const x = it.transform[4], y = it.transform[5];
+      log(y.toFixed(1) + " | " + x.toFixed(1) + " | " +
+          (x + it.width).toFixed(1) + " | " + JSON.stringify(it.str));
+    });
+    if(tc.items.length > 60) log("… (" + (tc.items.length-60) + " items más)");
+  }catch(err){
+    log("ERROR: " + err.message);
+  }
+});
+
+document.getElementById('copy').onclick = ()=>{
+  navigator.clipboard.writeText(out.textContent).then(()=>alert("Copiado"));
+};
+</script>
+</body>
+</html>
