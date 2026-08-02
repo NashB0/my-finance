@@ -13,11 +13,10 @@ border-radius:8px;overflow-x:auto;max-height:70vh;overflow-y:auto}
 </style>
 </head>
 <body>
-<h1>Diagnóstico pdf.js — líneas</h1>
+<h1>Parser Mercado Pago</h1>
 <input type="file" id="f" accept="application/pdf"><br>
-<label>Página: <input type="number" id="pg" value="1" min="1" style="width:60px"></label>
 <button id="copy">Copiar salida</button>
-<div id="out">Elegí un PDF…</div>
+<div id="out">Elegí el PDF de Mercado Pago…</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
@@ -27,29 +26,52 @@ function log(t){ out.textContent += t + "\n"; }
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
-// Agrupa los items de una página en líneas por coordenada Y
 function agruparLineas(items, tol){
   tol = tol || 3;
   const limpios = items
     .filter(it => it.str && it.str.trim() !== "")
-    .map(it => ({
-      texto: it.str,
-      x: it.transform[4],
-      der: it.transform[4] + it.width,
-      y: it.transform[5]
-    }));
-
+    .map(it => ({texto: it.str, x: it.transform[4], y: it.transform[5]}));
   const lineas = [];
   limpios.forEach(it => {
     let l = lineas.find(L => Math.abs(L.y - it.y) <= tol);
     if(!l){ l = {y: it.y, items: []}; lineas.push(l); }
     l.items.push(it);
   });
-
-  lineas.sort((a,b) => b.y - a.y);              // de arriba hacia abajo
-  lineas.forEach(l => l.items.sort((a,b) => a.x - b.x));  // izq a der
-  lineas.forEach(l => l.texto = l.items.map(i => i.texto.trim()).join(" "));
+  lineas.sort((a,b) => b.y - a.y);
+  lineas.forEach(l => {
+    l.items.sort((a,b) => a.x - b.x);
+    l.texto = l.items.map(i => i.texto.trim()).join(" ").replace(/\s+/g," ").trim();
+  });
   return lineas;
+}
+
+// "$ -1.479,55" -> -1479.55
+function numAR(s){
+  return parseFloat(s.replace(/[$\s]/g,"").replace(/\./g,"").replace(",","."));
+}
+
+const RE_MP = /^(\d{2}-\d{2}-\d{4})\s+(.*?)\s*(\d{9,})\s+(\$\s*-?[\d.]+,\d{2})\s+(\$\s*-?[\d.]+,\d{2})$/;
+
+function parseMercadoPago(lineasTodas){
+  const movs = [];
+  for(let i=0; i<lineasTodas.length; i++){
+    const m = lineasTodas[i].texto.match(RE_MP);
+    if(!m) continue;
+    let desc = m[2].trim();
+    // descripción partida: línea anterior y siguiente sin fecha ni monto
+    const antes = lineasTodas[i-1] ? lineasTodas[i-1].texto : "";
+    const desp  = lineasTodas[i+1] ? lineasTodas[i+1].texto : "";
+    const esFragmento = t => t && !RE_MP.test(t) && !/\d{2}-\d{2}-\d{4}/.test(t)
+                              && !/\$\s*-?[\d.]+,\d{2}/.test(t) && !/^\d+\/\d+$/.test(t);
+    if(esFragmento(antes)) desc = antes + " " + desc;
+    if(esFragmento(desp))  desc = desc + " " + desp;
+    desc = desc.replace(/\s+/g," ").trim();
+
+    const monto = numAR(m[4]);
+    const [d,mo,a] = m[1].split("-");
+    movs.push({fecha: a+"-"+mo+"-"+d, monto: monto, moneda: "ARS", descripcion: desc});
+  }
+  return movs;
 }
 
 document.getElementById('f').addEventListener('change', async e => {
@@ -57,17 +79,23 @@ document.getElementById('f').addEventListener('change', async e => {
   if(!file) return;
   out.textContent = "";
   try{
-    log("Archivo: " + file.name);
     const buf = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({data: buf}).promise;
-    log("Páginas totales: " + pdf.numPages);
-    const n = Math.min(parseInt(document.getElementById('pg').value)||1, pdf.numPages);
-    const page = await pdf.getPage(n);
-    const tc = await page.getTextContent();
-    const lineas = agruparLineas(tc.items, 3);
-    log("Líneas en página " + n + ": " + lineas.length);
-    log("--- y | texto ---");
-    lineas.forEach(l => log(l.y.toFixed(1) + " | " + l.texto));
+    let todas = [];
+    for(let p=1; p<=pdf.numPages; p++){
+      const page = await pdf.getPage(p);
+      const tc = await page.getTextContent();
+      todas = todas.concat(agruparLineas(tc.items, 3));
+    }
+    log("Páginas: " + pdf.numPages + " | Líneas: " + todas.length);
+    const movs = parseMercadoPago(todas);
+    log("MOVIMIENTOS DETECTADOS: " + movs.length);
+    let ing=0, gas=0, si=0, sg=0;
+    movs.forEach(m => { if(m.monto>=0){ing++; si+=m.monto;} else {gas++; sg+=m.monto;} });
+    log("Ingresos: " + ing + "  suma: " + si.toFixed(2));
+    log("Gastos:   " + gas + "  suma: " + sg.toFixed(2));
+    log("--- fecha | monto | descripción ---");
+    movs.forEach(m => log(m.fecha + " | " + m.monto.toFixed(2) + " | " + m.descripcion));
   }catch(err){
     log("ERROR: " + err.message);
   }
