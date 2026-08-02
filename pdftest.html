@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>PDF Test v7</title>
+<title>PDF Test v8</title>
 <style>
 body{background:#0d1424;color:#e8e8e8;font:14px system-ui;padding:12px}
 h1{color:#c9a86a;font-size:16px}
@@ -13,10 +13,10 @@ border-radius:8px;overflow-x:auto;max-height:70vh;overflow-y:auto}
 </style>
 </head>
 <body>
-<h1>Parsers PDF — v7</h1>
+<h1>Inspector items — v8</h1>
 <input type="file" id="f" accept="application/pdf"><br>
 <button id="copy">Copiar salida</button>
-<div id="out">Elegí un PDF…</div>
+<div id="out">Elegí el PDF de ING…</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
@@ -26,131 +26,27 @@ function log(t){ out.textContent += t + "\n"; }
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
-function agruparLineas(items, tol){
-  tol = tol || 3;
-  const limpios = items
-    .filter(it => it.str && it.str.trim() !== "")
-    .map(it => ({texto: it.str, x: it.transform[4], y: it.transform[5]}));
-  const lineas = [];
-  limpios.forEach(it => {
-    let l = lineas.find(L => Math.abs(L.y - it.y) <= tol);
-    if(!l){ l = {y: it.y, items: []}; lineas.push(l); }
-    l.items.push(it);
-  });
-  lineas.sort((a,b) => b.y - a.y);
-  lineas.forEach(l => {
-    l.items.sort((a,b) => a.x - b.x);
-    l.texto = l.items.map(i => i.texto.trim()).join(" ").replace(/\s+/g," ").trim();
-  });
-  return lineas;
-}
-
-function numAR(s){
-  return parseFloat(s.replace(/[$\s]/g,"").replace(/\./g,"").replace(",","."));
-}
-function numEN(s){
-  return parseFloat(s.replace(/[$\s]/g,"").replace(/,/g,""));
-}
-
-/* ---------- MERCADO PAGO ---------- */
-const RE_MP = /^(\d{2}-\d{2}-\d{4})\s+(.*?)\s*(\d{9,})\s+(\$\s*-?[\d.]+,\d{2})\s+(\$\s*-?[\d.]+,\d{2})$/;
-
-function esFragmentoMP(t){
-  if(!t) return false;
-  const s = t.trim();
-  if(RE_MP.test(s)) return false;
-  if(/\d{2}-\d{2}-\d{4}/.test(s)) return false;
-  if(/\$\s*-?[\d.]+,\d{2}/.test(s)) return false;
-  if(/^\d+\/\d+$/.test(s)) return false;
-  if(/^(operación|ID de la|Fecha|Descripción|Valor|Saldo)$/i.test(s)) return false;
-  return true;
-}
-
-function parseMercadoPago(lineas){
-  const movs = [];
-  for(let i=0; i<lineas.length; i++){
-    const L = lineas[i];
-    const m = L.texto.match(RE_MP);
-    if(!m) continue;
-    let antes = "", desp = "";
-    const A = lineas[i-1], D = lineas[i+1];
-    if(A && Math.abs(A.y - L.y) < 12 && esFragmentoMP(A.texto)) antes = A.texto;
-    if(D && Math.abs(D.y - L.y) < 12 && esFragmentoMP(D.texto)) desp = D.texto;
-    const desc = (antes + " " + m[2].trim() + " " + desp).replace(/\s+/g," ").trim();
-    const p = m[1].split("-");
-    movs.push({fecha: p[2]+"-"+p[1]+"-"+p[0], monto: numAR(m[4]),
-               moneda: "ARS", descripcion: desc});
-  }
-  return movs;
-}
-
-/* ---------- ING ---------- */
-const RE_NUM_EN = /-?[\d,]+\.\d{2}/g;
-
-function parseING(lineas){
-  const movs = [];
-  lineas.forEach(L => {
-    const t = L.texto;
-    const mf = t.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(.*)$/);
-    if(!mf) return;
-    const resto = mf[4];
-    const nums = resto.match(RE_NUM_EN);
-    if(!nums || nums.length < 2) return;
-    const importe = numEN(nums[nums.length - 2]);
-    if(isNaN(importe)) return;
-    let desc = resto;
-    const idx = desc.lastIndexOf(nums[nums.length - 2]);
-    if(idx > 0) desc = desc.slice(0, idx);
-    desc = desc.replace(/\s+/g," ").trim();
-    movs.push({fecha: mf[3]+"-"+mf[2]+"-"+mf[1], monto: importe,
-               moneda: "EUR", descripcion: desc});
-  });
-  return movs;
-}
-
-/* ---------- DETECCIÓN ---------- */
-function detectarBanco(texto){
-  if(/RESUMEN DE CUENTA EN PESOS|mercadopago\.com\.ar/i.test(texto)) return "MP";
-  if(/Movimientos de la Cuenta|ING/i.test(texto)) return "ING";
-  return "?";
-}
-
 document.getElementById('f').addEventListener('change', async e => {
   const file = e.target.files[0];
   if(!file) return;
   out.textContent = "";
   try{
-    log("VERSION 7");
+    log("VERSION 8");
     const buf = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({data: buf}).promise;
-    let todas = [];
-    for(let p=1; p<=pdf.numPages; p++){
-      const page = await pdf.getPage(p);
-      const tc = await page.getTextContent();
-      todas = todas.concat(agruparLineas(tc.items, 3));
-    }
-    const textoTodo = todas.map(l => l.texto).join("\n");
-    const banco = detectarBanco(textoTodo);
-    log("Páginas: " + pdf.numPages + " | Líneas: " + todas.length);
-    log("BANCO DETECTADO: " + banco);
-
-    let movs = [];
-    if(banco === "MP") movs = parseMercadoPago(todas);
-    else if(banco === "ING") movs = parseING(todas);
-
-    log("MOVIMIENTOS: " + movs.length);
-    let ing=0, gas=0, si=0, sg=0;
-    movs.forEach(m => { if(m.monto>=0){ing++; si+=m.monto;} else {gas++; sg+=m.monto;} });
-    log("Ingresos: " + ing + "  suma: " + si.toFixed(2));
-    log("Gastos:   " + gas + "  suma: " + sg.toFixed(2));
-
-    if(movs.length === 0){
-      log("--- CRUDO: primeras 30 líneas ---");
-      todas.slice(0,30).forEach(l => log(l.y.toFixed(1) + " | " + l.texto));
-    } else {
-      log("--- fecha | monto | descripción ---");
-      movs.forEach(m => log(m.fecha + " | " + m.monto.toFixed(2) + " | " + m.descripcion));
-    }
+    log("Páginas: " + pdf.numPages);
+    const page = await pdf.getPage(1);
+    log("Rotación página: " + page.rotate);
+    const tc = await page.getTextContent();
+    log("Items página 1: " + tc.items.length);
+    log("--- t0 t1 t2 t3 | x | y | w | texto ---");
+    tc.items.forEach(it => {
+      if(!it.str || it.str.trim()==="") return;
+      const T = it.transform;
+      log(T[0].toFixed(1)+" "+T[1].toFixed(1)+" "+T[2].toFixed(1)+" "+T[3].toFixed(1)
+        + " | " + T[4].toFixed(1) + " | " + T[5].toFixed(1)
+        + " | " + it.width.toFixed(1) + " | " + JSON.stringify(it.str));
+    });
   }catch(err){
     log("ERROR: " + err.message);
   }
