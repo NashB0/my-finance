@@ -54,22 +54,20 @@ const RE_MP = /^(\d{2}-\d{2}-\d{4})\s+(.*?)\s*(\d{9,})\s+(\$\s*-?[\d.]+,\d{2})\s
 
 function parseMercadoPago(lineasTodas){
   const movs = [];
+  const esFragmento = t => t && !RE_MP.test(t) && !/\d{2}-\d{2}-\d{4}/.test(t)
+                            && !/\$\s*-?[\d.]+,\d{2}/.test(t) && !/^\d+\/\d+$/.test(t)
+                            && !/^(operación|ID de la|Fecha|Descripción|Valor|Saldo)$/i.test(t.trim());
   for(let i=0; i<lineasTodas.length; i++){
-    const m = lineasTodas[i].texto.match(RE_MP);
+    const L = lineasTodas[i];
+    const m = L.texto.match(RE_MP);
     if(!m) continue;
-    let desc = m[2].trim();
-    // descripción partida: línea anterior y siguiente sin fecha ni monto
-    const antes = lineasTodas[i-1] ? lineasTodas[i-1].texto : "";
-    const desp  = lineasTodas[i+1] ? lineasTodas[i+1].texto : "";
-    const esFragmento = t => t && !RE_MP.test(t) && !/\d{2}-\d{2}-\d{4}/.test(t)
-                              && !/\$\s*-?[\d.]+,\d{2}/.test(t) && !/^\d+\/\d+$/.test(t);
-    if(esFragmento(antes)) desc = antes + " " + desc;
-    if(esFragmento(desp))  desc = desc + " " + desp;
-    desc = desc.replace(/\s+/g," ").trim();
-
-    const monto = numAR(m[4]);
+    let antes = "", desp = "";
+    const A = lineasTodas[i-1], D = lineasTodas[i+1];
+    if(A && Math.abs(A.y - L.y) < 12 && esFragmento(A.texto)) antes = A.texto;
+    if(D && Math.abs(D.y - L.y) < 12 && esFragmento(D.texto)) desp = D.texto;
+    let desc = (antes + " " + m[2].trim() + " " + desp).replace(/\s+/g," ").trim();
     const [d,mo,a] = m[1].split("-");
-    movs.push({fecha: a+"-"+mo+"-"+d, monto: monto, moneda: "ARS", descripcion: desc});
+    movs.push({fecha: a+"-"+mo+"-"+d, monto: numAR(m[4]), moneda: "ARS", descripcion: desc});
   }
   return movs;
 }
