@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>PDF Test v5</title>
+<title>PDF Test v6</title>
 <style>
 body{background:#0d1424;color:#e8e8e8;font:14px system-ui;padding:12px}
 h1{color:#c9a86a;font-size:16px}
@@ -13,10 +13,10 @@ border-radius:8px;overflow-x:auto;max-height:70vh;overflow-y:auto}
 </style>
 </head>
 <body>
-<h1>Parser Mercado Pago — v5</h1>
+<h1>Parsers PDF — v6 (MP + ING)</h1>
 <input type="file" id="f" accept="application/pdf"><br>
 <button id="copy">Copiar salida</button>
-<div id="out">Elegí el PDF de Mercado Pago…</div>
+<div id="out">Elegí un PDF…</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
@@ -45,10 +45,16 @@ function agruparLineas(items, tol){
   return lineas;
 }
 
+// 1.234,56 (formato AR/ES)
 function numAR(s){
   return parseFloat(s.replace(/[$\s]/g,"").replace(/\./g,"").replace(",","."));
 }
+// 1,557.92 (formato inglés, usado por ING)
+function numEN(s){
+  return parseFloat(s.replace(/[$\s]/g,"").replace(/,/g,""));
+}
 
+/* ---------- MERCADO PAGO ---------- */
 const RE_MP = /^(\d{2}-\d{2}-\d{4})\s+(.*?)\s*(\d{9,})\s+(\$\s*-?[\d.]+,\d{2})\s+(\$\s*-?[\d.]+,\d{2})$/;
 
 function esFragmentoMP(t){
@@ -80,12 +86,45 @@ function parseMercadoPago(lineas){
   return movs;
 }
 
+/* ---------- ING ---------- */
+// arranca con DD/MM/YYYY; los dos últimos números son importe y saldo
+const RE_NUM_EN = /-?[\d,]+\.\d{2}/g;
+
+function parseING(lineas){
+  const movs = [];
+  lineas.forEach(L => {
+    const t = L.texto;
+    const mf = t.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(.*)$/);
+    if(!mf) return;
+    const resto = mf[4];
+    const nums = resto.match(RE_NUM_EN);
+    if(!nums || nums.length < 2) return;
+    const importe = numEN(nums[nums.length - 2]);
+    if(isNaN(importe)) return;
+    // descripción = todo antes del primer número final
+    let desc = resto;
+    const idx = desc.lastIndexOf(nums[nums.length - 2]);
+    if(idx > 0) desc = desc.slice(0, idx);
+    desc = desc.replace(/\s+/g," ").trim();
+    movs.push({fecha: mf[3]+"-"+mf[2]+"-"+mf[1], monto: importe,
+               moneda: "EUR", descripcion: desc});
+  });
+  return movs;
+}
+
+/* ---------- DETECCIÓN ---------- */
+function detectarBanco(texto){
+  if(/RESUMEN DE CUENTA EN PESOS|mercadopago\.com\.ar/i.test(texto)) return "MP";
+  if(/Movimientos de la Cuenta|ING/i.test(texto)) return "ING";
+  return "?";
+}
+
 document.getElementById('f').addEventListener('change', async e => {
   const file = e.target.files[0];
   if(!file) return;
   out.textContent = "";
   try{
-    log("VERSION 5");
+    log("VERSION 6");
     const buf = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({data: buf}).promise;
     let todas = [];
@@ -94,8 +133,14 @@ document.getElementById('f').addEventListener('change', async e => {
       const tc = await page.getTextContent();
       todas = todas.concat(agruparLineas(tc.items, 3));
     }
+    const textoTodo = todas.map(l => l.texto).join("\n");
+    const banco = detectarBanco(textoTodo);
     log("Páginas: " + pdf.numPages + " | Líneas: " + todas.length);
-    const movs = parseMercadoPago(todas);
+    log("BANCO DETECTADO: " + banco);
+    let movs = [];
+    if(banco === "MP") movs = parseMercadoPago(todas);
+    else if(banco === "ING") movs = parseING(todas);
+    else { log("No reconocido. Primeras líneas:"); todas.slice(0,8).forEach(l=>log("  "+l.texto)); return; }
     log("MOVIMIENTOS: " + movs.length);
     let ing=0, gas=0, si=0, sg=0;
     movs.forEach(m => { if(m.monto>=0){ing++; si+=m.monto;} else {gas++; sg+=m.monto;} });
