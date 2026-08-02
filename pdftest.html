@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>PDF Test v6</title>
+<title>PDF Test v7</title>
 <style>
 body{background:#0d1424;color:#e8e8e8;font:14px system-ui;padding:12px}
 h1{color:#c9a86a;font-size:16px}
@@ -13,7 +13,7 @@ border-radius:8px;overflow-x:auto;max-height:70vh;overflow-y:auto}
 </style>
 </head>
 <body>
-<h1>Parsers PDF — v6 (MP + ING)</h1>
+<h1>Parsers PDF — v7</h1>
 <input type="file" id="f" accept="application/pdf"><br>
 <button id="copy">Copiar salida</button>
 <div id="out">Elegí un PDF…</div>
@@ -45,11 +45,9 @@ function agruparLineas(items, tol){
   return lineas;
 }
 
-// 1.234,56 (formato AR/ES)
 function numAR(s){
   return parseFloat(s.replace(/[$\s]/g,"").replace(/\./g,"").replace(",","."));
 }
-// 1,557.92 (formato inglés, usado por ING)
 function numEN(s){
   return parseFloat(s.replace(/[$\s]/g,"").replace(/,/g,""));
 }
@@ -87,7 +85,6 @@ function parseMercadoPago(lineas){
 }
 
 /* ---------- ING ---------- */
-// arranca con DD/MM/YYYY; los dos últimos números son importe y saldo
 const RE_NUM_EN = /-?[\d,]+\.\d{2}/g;
 
 function parseING(lineas){
@@ -101,7 +98,6 @@ function parseING(lineas){
     if(!nums || nums.length < 2) return;
     const importe = numEN(nums[nums.length - 2]);
     if(isNaN(importe)) return;
-    // descripción = todo antes del primer número final
     let desc = resto;
     const idx = desc.lastIndexOf(nums[nums.length - 2]);
     if(idx > 0) desc = desc.slice(0, idx);
@@ -124,7 +120,7 @@ document.getElementById('f').addEventListener('change', async e => {
   if(!file) return;
   out.textContent = "";
   try{
-    log("VERSION 6");
+    log("VERSION 7");
     const buf = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({data: buf}).promise;
     let todas = [];
@@ -137,17 +133,24 @@ document.getElementById('f').addEventListener('change', async e => {
     const banco = detectarBanco(textoTodo);
     log("Páginas: " + pdf.numPages + " | Líneas: " + todas.length);
     log("BANCO DETECTADO: " + banco);
+
     let movs = [];
     if(banco === "MP") movs = parseMercadoPago(todas);
     else if(banco === "ING") movs = parseING(todas);
-    else { log("No reconocido. Primeras líneas:"); todas.slice(0,8).forEach(l=>log("  "+l.texto)); return; }
+
     log("MOVIMIENTOS: " + movs.length);
     let ing=0, gas=0, si=0, sg=0;
     movs.forEach(m => { if(m.monto>=0){ing++; si+=m.monto;} else {gas++; sg+=m.monto;} });
     log("Ingresos: " + ing + "  suma: " + si.toFixed(2));
     log("Gastos:   " + gas + "  suma: " + sg.toFixed(2));
-    log("--- fecha | monto | descripción ---");
-    movs.forEach(m => log(m.fecha + " | " + m.monto.toFixed(2) + " | " + m.descripcion));
+
+    if(movs.length === 0){
+      log("--- CRUDO: primeras 30 líneas ---");
+      todas.slice(0,30).forEach(l => log(l.y.toFixed(1) + " | " + l.texto));
+    } else {
+      log("--- fecha | monto | descripción ---");
+      movs.forEach(m => log(m.fecha + " | " + m.monto.toFixed(2) + " | " + m.descripcion));
+    }
   }catch(err){
     log("ERROR: " + err.message);
   }
