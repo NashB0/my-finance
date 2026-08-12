@@ -230,7 +230,7 @@
       { v:'Sueldo', k:['sueldo','salario','paga','aguinaldo','quincena'] },
       { v:'Freelance', k:['freelance','free lance','proyecto','cliente','changa'] },
       { v:'Ventas', k:['venta','ventas','vendi','vendido'] },
-      { v:'Intereses', k:['interes','intereses','renta','dividendo','dividendos','plazo fijo'] },
+      { v:'Intereses', k:['interes','intereses','renta','dividendo','dividendos','plazo fijo','rendimiento','rendimientos'] },
       { v:'Regalo', k:['regalo','regalaron'] }
     ];
     const VOZ_DONDE = [
@@ -649,6 +649,7 @@
     function catDesde(desc, dict) { const t = norm(String(desc||'')); for (const c of dict) { if (c.k.some(k => tiene(t, k))) return c.v; } return null; }
     function medioDesde(desc) { const t = norm(String(desc||'')); for (const m of VOZ_MEDIOS) { if (m.k.some(k => tiene(t, k))) return m.v; } return null; }
 
+    // ===== LECTOR DE PDF (Mercado Pago · ING · BBVA) =====
     let IMP = null;
     function cargarPDFjs() {
       return new Promise((res, rej) => {
@@ -660,121 +661,150 @@
         document.head.appendChild(s);
       });
     }
-    async function extraerLineasPDF(file) {
-      const buf = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-      const lineas = [];
-      for (let p = 1; p <= pdf.numPages; p++) {
-        const page = await pdf.getPage(p);
-        const tc = await page.getTextContent();
-        const rows = {};
-        tc.items.forEach(it => {
-          if (!it.str || !it.str.trim()) return;
-          const y = Math.round(it.transform[5]);
-          (rows[y] = rows[y] || []).push([it.transform[4], it.str]);
-        });
-        Object.keys(rows).map(Number).sort((a,b)=>b-a).forEach(y => {
-          const linea = rows[y].sort((a,b)=>a[0]-b[0]).map(t=>t[1]).join(' ').replace(/\s+/g,' ').trim();
-          if (linea) lineas.push(linea);
-        });
-      }
-      return lineas;
-    }
-    function parseBBVA(lineas) {
-      const filas = [];
-      const reDate = /^(\d{2}\/\d{2}\/\d{4})\s+(.+?)\s+(-?[\d.]+,\d{2})$/;
-      for (const ln of lineas) {
-        const m = ln.match(reDate);
-        if (!m) continue;
-        const comercio = m[2]
-          .replace(/(?:\*{2,}\s*)+\d{4}/g, ' ')
-          .replace(/\s*\$\s*$/, '')
-          .replace(/\s+\d{6}\s*$/, '')
-          .replace(/\s+/g, ' ').trim();
-        if (!comercio) continue;
-        filas.push([m[1], comercio, m[3]]);
-      }
-      return filas;
-    }
-    async function extraerItemsPDF(file) {
+    async function leerPaginasPDF(file) {
       const buf = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
       const pages = [];
       for (let p = 1; p <= pdf.numPages; p++) {
         const page = await pdf.getPage(p);
         const tc = await page.getTextContent();
-        const items = [];
-        tc.items.forEach(it => {
-          if (!it.str || !it.str.trim()) return;
-          items.push({ x: it.transform[4], y: it.transform[5], s: it.str.trim() });
-        });
-        pages.push(items);
+        const items = tc.items.filter(it => it.str && it.str.trim() !== '')
+          .map(it => ({ texto: it.str.trim(), x: it.transform[4], der: it.transform[4] + it.width, y: it.transform[5] }));
+        pages.push({ rot: page.rotate, items: items, texto: items.map(i => i.texto).join(' ') });
       }
       return pages;
     }
-    function parseMercadoPago(pages) {
-      const reFecha = /^\d{2}-\d{2}-\d{4}$/;
-      const rePeso = /^\$\s*-?[\d.]+,\d{2}$/;
-      const filas = [];
-      for (const items of pages) {
-        const fechas = items.filter(it => it.x < 70 && reFecha.test(it.s));
-        for (const f of fechas) {
-          const yd = f.y;
-          const fila = items.filter(it => Math.abs(it.y - yd) <= 4);
-          if (fila.some(it => /US\$/.test(it.s))) continue; // tabla en dólares: la salteamos
-          const pesos = fila.filter(it => rePeso.test(it.s)).sort((a,b)=>a.x-b.x);
-          if (!pesos.length) continue;
-          const valor = pesos[0].s.replace(/\$/,'').replace(/\s+/g,'').trim();
-          const desc = items
-            .filter(it => it.x >= 75 && it.x < 190 && Math.abs(it.y - yd) <= 16)
-            .sort((a,b)=> b.y - a.y)
-            .map(it => it.s).join(' ').replace(/\s+/g,' ').trim();
-          filas.push([f.s, desc, valor]);
-        }
-      }
-      return filas;
+    function agruparPorY(items, tol) {
+      tol = tol || 3;
+      const L = [];
+      items.forEach(it => {
+        let g = L.find(G => Math.abs(G.y - it.y) <= tol);
+        if (!g) { g = { y: it.y, items: [] }; L.push(g); }
+        g.items.push(it);
+      });
+      L.sort((a,b) => b.y - a.y);
+      L.forEach(g => { g.items.sort((a,b) => a.x - b.x); g.texto = g.items.map(i => i.texto).join(' ').replace(/\s+/g,' ').trim(); });
+      return L;
     }
-    function parseBBVAMov(pages) {
-      const reMonto = /^-?[\d.]+,\d{2}$/;
-      let anio = new Date().getFullYear();
-      for (const items of pages) { let hit=false; for (const it of items) { const m=it.s.match(/\b\d{2}\/\d{2}\/(\d{4})\b/); if(m){anio=+m[1];hit=true;break;} } if(hit) break; }
-      const filas = [];
-      for (const items of pages) {
-        const fechas = items.filter(it => it.x < 90 && /^\d{2}\/\d{2}$/.test(it.s));
-        for (const f of fechas) {
-          const yd = f.y;
-          const row = items.filter(it => Math.abs(it.y - yd) <= 4);
-          const concepto = row.filter(it => it.x >= 125 && it.x < 380).sort((a,b)=>a.x-b.x).map(it=>it.s).join(' ').replace(/\s+/g,' ').trim();
-          if (/PAGO CON VISA DEBITO/i.test(concepto)) continue; // ya vienen de la tabla de Compras
-          const deb = row.filter(it => reMonto.test(it.s) && it.x < 445).sort((a,b)=>a.x-b.x)[0];
-          const cred = row.filter(it => reMonto.test(it.s) && it.x >= 445 && it.x < 515).sort((a,b)=>a.x-b.x)[0];
-          let valor = null;
-          if (cred) valor = cred.s.replace('-','');
-          else if (deb) valor = deb.s.charAt(0)==='-' ? deb.s : ('-'+deb.s);
-          if (!valor) continue;
-          filas.push([f.s + '/' + anio, concepto, valor]);
-        }
+    function agruparPorX(items, tol) {
+      tol = tol || 10;
+      const L = [];
+      items.forEach(it => {
+        let g = L.find(G => Math.abs(G.x - it.x) <= tol);
+        if (!g) { g = { x: it.x, items: [] }; L.push(g); }
+        g.items.push(it);
+      });
+      L.sort((a,b) => a.x - b.x);
+      L.forEach(g => g.items.sort((a,b) => a.y - b.y));
+      return L;
+    }
+    function numPDFar(s) { return parseFloat(s.replace(/[$\s]/g,'').replace(/\./g,'').replace(',','.')); }
+    function numPDFen(s) { return parseFloat(s.replace(/[$\s]/g,'').replace(/,/g,'')); }
+
+    const RE_MP_PDF = /^(\d{2}-\d{2}-\d{4})\s+(.*?)\s*(\d{9,})\s+(\$\s*-?[\d.]+,\d{2})\s+(\$\s*-?[\d.]+,\d{2})$/;
+    function fragmentoMP(t) {
+      if (!t) return false;
+      const s = t.trim();
+      if (RE_MP_PDF.test(s)) return false;
+      if (/\d{2}-\d{2}-\d{4}/.test(s)) return false;
+      if (/\$\s*-?[\d.]+,\d{2}/.test(s)) return false;
+      if (/^\d+\/\d+$/.test(s)) return false;
+      if (/^(operación|ID de la|Fecha|Descripción|Valor|Saldo)$/i.test(s)) return false;
+      return true;
+    }
+    function parsePDF_MP(lineas) {
+      const movs = [];
+      for (let i = 0; i < lineas.length; i++) {
+        const L = lineas[i], m = L.texto.match(RE_MP_PDF);
+        if (!m) continue;
+        let antes = '', desp = '';
+        const A = lineas[i-1], D = lineas[i+1];
+        if (A && Math.abs(A.y - L.y) < 12 && fragmentoMP(A.texto)) antes = A.texto;
+        if (D && Math.abs(D.y - L.y) < 12 && fragmentoMP(D.texto)) desp = D.texto;
+        const desc = (antes + ' ' + m[2].trim() + ' ' + desp).replace(/\s+/g,' ').trim();
+        const p = m[1].split('-');
+        movs.push([p[2]+'-'+p[1]+'-'+p[0], desc, numPDFar(m[4])]);
       }
-      return filas;
+      return movs;
+    }
+    function colING(y) {
+      if (y < 60) return 'fecha';
+      if (y < 150) return 'categoria';
+      if (y < 340) return 'subcategoria';
+      if (y < 800) return 'descripcion';
+      if (y < 900) return 'importe';
+      return 'saldo';
+    }
+    function parsePDF_ING(filas) {
+      const movs = [];
+      filas.forEach(fila => {
+        let fecha = null, desc = [], importe = null;
+        fila.items.forEach(it => {
+          const c = colING(it.y);
+          if (c === 'fecha' && /^\d{2}\/\d{2}\/\d{4}$/.test(it.texto)) fecha = it.texto;
+          else if (c === 'descripcion') desc.push(it.texto);
+          else if (c === 'importe' && /^-?[\d,]+\.\d{2}$/.test(it.texto)) importe = numPDFen(it.texto);
+        });
+        if (!fecha || importe === null || isNaN(importe)) return;
+        const p = fecha.split('/');
+        movs.push([p[2]+'-'+p[1]+'-'+p[0], desc.join(' ').replace(/\s+/g,' ').trim(), importe]);
+      });
+      return movs;
+    }
+    function parsePDF_BBVA(lineas, anio) {
+      const movs = [];
+      lineas.forEach(L => {
+        let fecha = null, concepto = [], monto = null;
+        L.items.forEach(it => {
+          if (it.x < 95 && /^\d{2}\/\d{2}$/.test(it.texto)) { fecha = it.texto; return; }
+          if (/^-?[\d.]+,\d{2}$/.test(it.texto) && it.der > 360) {
+            if (Math.abs(it.der - 429.2) < 6) monto = numPDFar(it.texto);
+            else if (Math.abs(it.der - 501.2) < 6) monto = Math.abs(numPDFar(it.texto));
+            return;
+          }
+          if (it.x > 120 && it.x < 350) concepto.push(it.texto);
+        });
+        if (!fecha || monto === null || isNaN(monto)) return;
+        const p = fecha.split('/');
+        movs.push([anio+'-'+p[1]+'-'+p[0], concepto.join(' ').replace(/\s+/g,' ').trim(), monto]);
+      });
+      return movs;
+    }
+    function detectarBancoPDF(texto) {
+      if (/RESUMEN DE CUENTA EN PESOS|mercadopago\.com\.ar/i.test(texto)) return 'MP';
+      if (/Movimientos de la Cuenta/i.test(texto)) return 'ING';
+      if (/BBVA|Movimientos en cuentas/i.test(texto)) return 'BBVA';
+      return '?';
     }
     async function importarPDF(file, panel) {
       try { await cargarPDFjs(); } catch (e) { panel.innerHTML = '<div class="vacio">'+e.message+'</div>'; return; }
-      let lineas, pages;
-      try {
-        lineas = await extraerLineasPDF(file);
-        pages = await extraerItemsPDF(file);
-      } catch (e) { panel.innerHTML = '<div class="vacio">No pude leer el PDF ('+e.message+').</div>'; return; }
-      let filas = parseBBVA(lineas);
-      let origen = '';
-      if (filas.length) { filas = filas.concat(parseBBVAMov(pages)); origen = 'BBVA'; }
-      else { filas = parseMercadoPago(pages); if (filas.length) origen = 'Mercado Pago'; }
+      let pages;
+      try { pages = await leerPaginasPDF(file); }
+      catch (e) { panel.innerHTML = '<div class="vacio">No pude leer el PDF ('+e.message+').</div>'; return; }
+      const textoTodo = pages.map(p => p.texto).join('\n');
+      const banco = detectarBancoPDF(textoTodo);
+      let porY = [], porX = [];
+      pages.forEach(pg => {
+        if (banco === 'BBVA' && !/Movimientos en cuentas/i.test(pg.texto)) return;
+        if (pg.rot === 90 || pg.rot === 270) porX = porX.concat(agruparPorX(pg.items, 10));
+        else porY = porY.concat(agruparPorY(pg.items, 3));
+      });
+      let filas = [], origen = '', monedaFija = 'ARS';
+      if (banco === 'MP') { filas = parsePDF_MP(porY); origen = 'Mercado Pago'; monedaFija = 'ARS'; }
+      else if (banco === 'ING') { filas = parsePDF_ING(porX); origen = 'ING'; monedaFija = 'EUR'; }
+      else if (banco === 'BBVA') {
+        const ma = textoTodo.match(/\d{2}\/\d{2}\/(\d{4})/);
+        filas = parsePDF_BBVA(porY, ma ? ma[1] : String(new Date().getFullYear()));
+        origen = 'BBVA'; monedaFija = 'ARS';
+      }
       if (!filas.length) {
-        panel.innerHTML = '<div class="vacio">No reconocí movimientos en este PDF. Por ahora leo resúmenes de BBVA y de Mercado Pago.</div>';
+        panel.innerHTML = '<div class="vacio">No reconocí movimientos en este PDF. Por ahora leo resúmenes de Mercado Pago, ING y BBVA. Los de Wise importalos como Excel.</div>';
         return;
       }
-      IMP = { headers: ['Fecha','Comercio','Importe'], filas, origen };
+      IMP = { headers: ['Fecha','Descripción','Importe'], filas: filas, origen: origen, monedaFija: monedaFija };
       mostrarMapeo();
     }
+
     async function archivoElegido(input) {
       const file = input.files && input.files[0]; if (!file) return;
       const panel = document.getElementById('import-panel');
@@ -806,7 +836,7 @@
       const panel = document.getElementById('import-panel');
       panel.innerHTML = `
         <div style="margin-top:12px;border-top:1px solid #334155;padding-top:12px;">
-          <div class="patri-label">Mapear columnas · ${IMP.filas.length} filas</div>
+          <div class="patri-label">Mapear columnas · ${IMP.filas.length} filas${IMP.origen ? ' · ' + IMP.origen : ''}</div>
           <label>Fecha</label><select id="map-fecha">${opcsCols(cF)}</select>
           <label>Monto</label><select id="map-monto">${opcsCols(cM)}</select>
           <label>Descripción</label><select id="map-desc"><option value="-1">— ninguna —</option>${h.map((hh,i)=>`<option value="${i}" ${i===cD?'selected':''}>${hh||('Columna '+(i+1))}</option>`).join('')}</select>
@@ -816,7 +846,8 @@
           <button onclick="previsualizarImport()">Previsualizar</button>
           <div id="import-preview"></div>
         </div>`;
-      if (cMon >= 0) document.getElementById('map-moneda').value = String(cMon);
+      if (IMP.monedaFija) document.getElementById('map-moneda').value = 'fija-' + IMP.monedaFija;
+      else if (cMon >= 0) document.getElementById('map-moneda').value = String(cMon);
     }
     function leerMapeo() {
       return {
@@ -859,7 +890,6 @@
     }
     function confirmarImport() {
       const items = interpretarFilas();
-      // Huellas de lo que ya está cargado: para no duplicar y para reclasificar al reimportar
       const refs = {};
       const stores = { gastos: gastos, ingresos: ingresos, ahorros: ahorros, inversiones: inversiones };
       Object.keys(stores).forEach(dest => {
@@ -872,7 +902,7 @@
       items.forEach((it, idx) => {
         const fechaISO = it.fecha ? isoDeFecha(it.fecha) : hoyISO();
         const h = huellaMov(it.destino, fechaISO, it.monto, it.moneda, it.desc);
-        if (refs[h] && refs[h].length) { // ya existe: no duplico, pero le actualizo el origen
+        if (refs[h] && refs[h].length) {
           const ex = refs[h].shift(); dup++;
           if (it.origen && (ex.donde === undefined) && ex.medio !== it.origen) { ex.medio = it.origen; retag++; }
           return;
@@ -908,7 +938,7 @@
       XLSX.writeFile(wb, 'mis-finanzas-' + hoyISO() + '.xlsx');
     }
 
-    const BANCOS_SUGERIDOS = ['Mercado Pago', 'BBVA', 'Galicia', 'Santander', 'Nación', 'Brubank', 'Ualá', 'Wise', 'eToro', 'Efectivo'];
+    const BANCOS_SUGERIDOS = ['Mercado Pago', 'BBVA', 'ING', 'Galicia', 'Santander', 'Nación', 'Brubank', 'Ualá', 'Wise', 'eToro', 'Efectivo'];
     let bancos = JSON.parse(localStorage.getItem('mf_bancos') || 'null');
     let onbSel = [];
     function bancosActivos() { return (bancos && bancos.length) ? bancos : ['Mercado Pago', 'BBVA', 'Wise']; }
