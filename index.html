@@ -48,13 +48,11 @@
     .onb-add { display: flex; gap: 8px; margin: 12px 0 18px; }
     .onb-add input { flex: 1; }
     .onb-add button { width: 52px; flex: 0 0 auto; margin: 0; }
-    .mes-titulo { font-size: 16px; font-weight: bold; margin-bottom: 10px; }
     .mes-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
     .mes-nav .flecha-mes { width:auto; background:var(--acento-tenue); color:var(--acento-claro); border:1px solid var(--acento-borde); border-radius:8px; padding:3px 18px; font-size:20px; line-height:1.1; }
     .mes-nav .flecha-mes:active { background:rgba(201,168,106,.2); }
     .mes-actual { font-size:14px; font-weight:600; letter-spacing:.04em; color:#cbd5e1; }
     .fila { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 15px; }
-    .balance { border-top: 1px solid #334155; margin-top: 8px; padding-top: 8px; font-weight: bold; }
     .verde { color: #34d399; font-weight: bold; } .rojo { color: #e8796b; font-weight: bold; }
     .azul { color: #60a5fa; font-weight: bold; } .naranja { color: #fb923c; font-weight: bold; }
     .oro { color: var(--acento-claro); font-weight: bold; }
@@ -186,6 +184,7 @@
   <script>
     const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
     const MESNUM = { enero:0, febrero:1, marzo:2, abril:3, mayo:4, junio:5, julio:6, agosto:7, septiembre:8, setiembre:8, octubre:9, noviembre:10, diciembre:11 };
+    const MESNUM_PDF = { enero:1, febrero:2, marzo:3, abril:4, mayo:5, junio:6, julio:7, agosto:8, septiembre:9, setiembre:9, octubre:10, noviembre:11, diciembre:12 };
     const DEF_MONEDA = { 'g-moneda':'ARS', 'i-moneda':'EUR', 'a-moneda':'ARS', 'inv-moneda':'USD' };
 
     let cotiz = JSON.parse(localStorage.getItem('cotizaciones') || 'null');
@@ -206,7 +205,7 @@
 
     function mostrar(nombre, boton) { document.querySelectorAll('.seccion').forEach(s => s.classList.remove('activa')); document.getElementById('seccion-'+nombre).classList.add('activa'); document.querySelectorAll('.nav button').forEach(b => b.classList.remove('activa')); boton.classList.add('activa'); window.scrollTo(0, 0); }
 
-    // ===== ENTRADA POR VOZ (común a las 4 pantallas) =====
+    // ===== ENTRADA POR VOZ =====
     function norm(s) { return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
     function tiene(t, palabra) { const esc = palabra.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); return new RegExp('(^|[^a-z0-9])' + esc + '([^a-z0-9]|$)').test(t); }
 
@@ -230,7 +229,7 @@
       { v:'Sueldo', k:['sueldo','salario','paga','aguinaldo','quincena'] },
       { v:'Freelance', k:['freelance','free lance','proyecto','cliente','changa'] },
       { v:'Ventas', k:['venta','ventas','vendi','vendido'] },
-      { v:'Intereses', k:['interes','intereses','renta','dividendo','dividendos','plazo fijo','rendimiento','rendimientos'] },
+      { v:'Intereses', k:['interes','intereses','renta','dividendo','dividendos','plazo fijo','rendimiento','rendimientos','cashback'] },
       { v:'Regalo', k:['regalo','regalaron'] }
     ];
     const VOZ_DONDE = [
@@ -304,26 +303,20 @@
     function interpretarVoz(texto, cfg) {
       document.getElementById(cfg.resultId).textContent = 'Entendí: "' + texto + '" — revisá y tocá ' + cfg.btnLabel + '.';
       let t = norm(texto);
-
       const fp = parseFechaVoz(t);
       if (fp) { document.getElementById(cfg.fecha).value = fp.iso; t = t.replace(fp.str, ' '); }
       else { document.getElementById(cfg.fecha).value = hoyISO(); }
-
       let moneda = 'ARS';
       if (texto.includes('€') || tiene(t,'euro') || tiene(t,'euros') || tiene(t,'eur')) moneda = 'EUR';
       else if (/us\$|u\$s/.test(t) || tiene(t,'dolar') || tiene(t,'dolares') || tiene(t,'usd')) moneda = 'USD';
       document.getElementById(cfg.moneda).value = moneda;
-
       let monto = null;
       const mDec = t.match(/(\d[\d.]*)\s+con\s+(\d{1,2})\b/);
       if (mDec) { const ent = mDec[1].replace(/[.,]/g,''); monto = parseFloat(ent + '.' + mDec[2].padStart(2,'0')); }
       else { const mNum = t.match(/(\d[\d.,]*\d|\d)/); if (mNum) monto = parseInt(mNum[0].replace(/[.,]/g,''),10); }
       if (monto && monto > 0) document.getElementById(cfg.monto).value = monto;
-
       if (cfg.medio) { for (const m of VOZ_MEDIOS) { if (m.k.some(k => tiene(t, k))) { document.getElementById(cfg.medio).value = m.v; break; } } }
-
       if (cfg.selProp && cfg.dictProp) { for (const c of cfg.dictProp) { if (c.k.some(k => tiene(t, k))) { document.getElementById(cfg.selProp).value = c.v; break; } } }
-
       let nota = '';
       if (cfg.comercios) { for (const com of VOZ_COMERCIOS) { if (com.k.some(k => tiene(t, k))) { nota = com.n; break; } } }
       if (!nota) { const mEn = texto.match(/ en (.+)/i); if (mEn) nota = limpiarNota(mEn[1]); }
@@ -601,7 +594,7 @@
       actualizarInicio();
     }
 
-    // ===== EXPORTAR / IMPORTAR EXCEL =====
+    // ===== IMPORTAR: utilidades =====
     function cargarXLSX() {
       return new Promise((res, rej) => {
         if (window.XLSX) { res(); return; }
@@ -649,7 +642,74 @@
     function catDesde(desc, dict) { const t = norm(String(desc||'')); for (const c of dict) { if (c.k.some(k => tiene(t, k))) return c.v; } return null; }
     function medioDesde(desc) { const t = norm(String(desc||'')); for (const m of VOZ_MEDIOS) { if (m.k.some(k => tiene(t, k))) return m.v; } return null; }
 
-    // ===== LECTOR DE PDF (Mercado Pago · ING · BBVA) =====
+    // --- Detección ADAPTATIVA de la columna de monto: mira los datos, no solo el título ---
+    const EXCL_MONTO = /comisi|fee|saldo|balance|corriente|tasa|rate|cambio|exchange|convertid|impuesto|tax|iva|cuota|acumulad/i;
+    function puntajeMonto(filas, c) {
+      let nocero = 0, decimales = 0, negativos = 0, fechas = 0;
+      const n = Math.min(filas.length, 200);
+      for (let r = 0; r < n; r++) {
+        const v = filas[r][c];
+        if (v instanceof Date) { fechas++; continue; }
+        const s = String(v == null ? '' : v).trim();
+        if (!s) continue;
+        if (/^\d{4}-\d{2}-\d{2}/.test(s) || /^\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}/.test(s)) { fechas++; continue; }
+        if (/[a-zA-Z]{3,}/.test(s.replace(/US\$|ARS|USD|EUR/gi, ''))) continue;
+        const num = numImport(v);
+        if (isNaN(num)) continue;
+        if (num !== 0) nocero++;
+        if (Math.abs(num % 1) > 0.0001) decimales++;
+        if (num < 0) negativos++;
+      }
+      if (fechas > n * 0.5) return -1;
+      if (nocero === 0) return -1;
+      let p = nocero * 10;
+      if (negativos > 0 && negativos < nocero) p += 40;
+      p += Math.min(decimales, nocero) * 2;
+      return p;
+    }
+    function detectarColMonto(headers, filas) {
+      const cands = [];
+      for (let i = 0; i < headers.length; i++) {
+        const h = String(headers[i] || '');
+        const pj = puntajeMonto(filas, i);
+        if (pj < 0) continue;
+        let bonus = 0;
+        if (/^(importe|monto|cantidad|amount|valor|neto|net|debe|haber|d[ée]bito|cr[ée]dito)/i.test(h.trim())) bonus = 300;
+        else if (/importe|monto|cantidad|amount|valor|neto|total|credit|debit/i.test(h)) bonus = 120;
+        if (EXCL_MONTO.test(h)) bonus -= 200;
+        cands.push({ i: i, score: pj + bonus });
+      }
+      if (!cands.length) return detectarCol(headers, /importe|monto|amount|valor|value|neto|^net|total/i);
+      cands.sort((a, b) => b.score - a.score);
+      return cands[0].i;
+    }
+    function combinarDebitoCredito(headers, filas) {
+      const cD = detectarCol(headers, /^\s*(d[ée]bito|debito|debe|cargo|salida|saliente)\s*$/i);
+      const cC = detectarCol(headers, /^\s*(cr[ée]dito|credito|haber|abono|entrada|entrante)\s*$/i);
+      if (cD < 0 || cC < 0 || cD === cC) return { headers: headers, filas: filas };
+      const h2 = headers.slice(); h2.push('Monto (Déb./Créd.)');
+      const f2 = filas.map(r => {
+        const row = r.slice();
+        const d = numImport(r[cD]), c = numImport(r[cC]);
+        let v = '';
+        if (!isNaN(c) && c !== 0) v = Math.abs(c);
+        else if (!isNaN(d) && d !== 0) v = -Math.abs(d);
+        row[h2.length - 1] = v;
+        return row;
+      });
+      return { headers: h2, filas: f2 };
+    }
+    function detectarOrigenTabla(headers, nombreArchivo) {
+      const h = headers.join(' | ').toLowerCase();
+      const f = String(nombreArchivo || '').toLowerCase();
+      if (/cambiar desde|cambiar a|saldo corriente|tipo de detalles/.test(h)) return 'Wise';
+      if (/statement_\d+_(ars|usd|eur)/.test(f)) return 'Wise';
+      for (const b of bancosActivos()) { if (f.includes(norm(b).replace(/\s+/g, ''))) return b; }
+      for (const m of VOZ_MEDIOS) { if (m.k.some(k => f.includes(k.replace(/\s+/g, '')))) return m.v; }
+      return '';
+    }
+
+    // ===== LECTOR DE PDF (Wise · Mercado Pago · ING · BBVA) =====
     let IMP = null;
     function cargarPDFjs() {
       return new Promise((res, rej) => {
@@ -701,6 +761,47 @@
     function numPDFar(s) { return parseFloat(s.replace(/[$\s]/g,'').replace(/\./g,'').replace(',','.')); }
     function numPDFen(s) { return parseFloat(s.replace(/[$\s]/g,'').replace(/,/g,'')); }
 
+    /* --- WISE: columnas Entrante(≈416) / Saliente(≈485) / Saldo(≈553); fecha en la línea siguiente --- */
+    const RE_NUM_WISE = /^-?[\d.]+,\d{2}$/;
+    const RE_FECHA_WISE = /^(\d{1,2}) de ([a-záéíóú]+) de (\d{4})/i;
+    function monedaWise(texto) {
+      let m = texto.match(/Extracto[\s\S]{0,50}?\ben\s+(ARS|USD|EUR)\b/);
+      if (m) return m[1];
+      m = texto.match(/\b(ARS|USD|EUR)\s+el\s+\d{1,2}\s+de\b/);
+      return m ? m[1] : 'EUR';
+    }
+    function parsePDF_WISE(lineas) {
+      const movs = [];
+      let buf = [], monto = null;
+      lineas.forEach(L => {
+        const t = L.texto;
+        if (/Entrante/.test(t) && /Saliente/.test(t) && /Saldo/.test(t)) { buf = []; monto = null; return; }
+        if (/^ref:/.test(t) || /^Wise es el nombre/.test(t)) { buf = []; return; }
+        let ent = null, sal = null;
+        L.items.forEach(it => {
+          if (!RE_NUM_WISE.test(it.texto)) return;
+          if (Math.abs(it.der - 416.2) < 9) ent = it.texto;
+          else if (Math.abs(it.der - 484.8) < 9) sal = it.texto;
+        });
+        const mf = t.match(RE_FECHA_WISE);
+        if (ent !== null || sal !== null) {
+          monto = ent !== null ? Math.abs(numPDFar(ent)) : -Math.abs(numPDFar(sal));
+          L.items.forEach(it => { if (it.der < 380) buf.push(it.texto); });
+        } else if (mf && monto !== null) {
+          const mes = MESNUM_PDF[mf[2].toLowerCase()] || 1;
+          const f = mf[3] + '-' + String(mes).padStart(2,'0') + '-' + String(+mf[1]).padStart(2,'0');
+          movs.push([f, buf.join(' ').replace(/\s+/g,' ').trim(), monto]);
+          buf = []; monto = null;
+        } else if (mf) { buf = []; }
+        else {
+          L.items.forEach(it => { if (it.der < 380) buf.push(it.texto); });
+          if (buf.length > 60) buf = buf.slice(-60);
+        }
+      });
+      return movs;
+    }
+
+    /* --- MERCADO PAGO --- */
     const RE_MP_PDF = /^(\d{2}-\d{2}-\d{4})\s+(.*?)\s*(\d{9,})\s+(\$\s*-?[\d.]+,\d{2})\s+(\$\s*-?[\d.]+,\d{2})$/;
     function fragmentoMP(t) {
       if (!t) return false;
@@ -727,6 +828,8 @@
       }
       return movs;
     }
+
+    /* --- ING: página rotada 90°, columnas por coordenada Y --- */
     function colING(y) {
       if (y < 60) return 'fecha';
       if (y < 150) return 'categoria';
@@ -751,6 +854,8 @@
       });
       return movs;
     }
+
+    /* --- BBVA: débito borde derecho ≈429, crédito ≈501, saldo ≈574 (se ignora) --- */
     function parsePDF_BBVA(lineas, anio) {
       const movs = [];
       lineas.forEach(L => {
@@ -770,7 +875,9 @@
       });
       return movs;
     }
+
     function detectarBancoPDF(texto) {
+      if (/Wise Europe SA|wise\.com\/help|TransferWise/i.test(texto)) return 'WISE';
       if (/RESUMEN DE CUENTA EN PESOS|mercadopago\.com\.ar/i.test(texto)) return 'MP';
       if (/Movimientos de la Cuenta/i.test(texto)) return 'ING';
       if (/BBVA|Movimientos en cuentas/i.test(texto)) return 'BBVA';
@@ -790,7 +897,8 @@
         else porY = porY.concat(agruparPorY(pg.items, 3));
       });
       let filas = [], origen = '', monedaFija = 'ARS';
-      if (banco === 'MP') { filas = parsePDF_MP(porY); origen = 'Mercado Pago'; monedaFija = 'ARS'; }
+      if (banco === 'WISE') { filas = parsePDF_WISE(porY); origen = 'Wise'; monedaFija = monedaWise(textoTodo); }
+      else if (banco === 'MP') { filas = parsePDF_MP(porY); origen = 'Mercado Pago'; monedaFija = 'ARS'; }
       else if (banco === 'ING') { filas = parsePDF_ING(porX); origen = 'ING'; monedaFija = 'EUR'; }
       else if (banco === 'BBVA') {
         const ma = textoTodo.match(/\d{2}\/\d{2}\/(\d{4})/);
@@ -798,7 +906,7 @@
         origen = 'BBVA'; monedaFija = 'ARS';
       }
       if (!filas.length) {
-        panel.innerHTML = '<div class="vacio">No reconocí movimientos en este PDF. Por ahora leo resúmenes de Mercado Pago, ING y BBVA. Los de Wise importalos como Excel.</div>';
+        panel.innerHTML = '<div class="vacio">No reconocí movimientos en este PDF. Por ahora leo resúmenes de Wise, Mercado Pago, ING y BBVA.</div>';
         return;
       }
       IMP = { headers: ['Fecha','Descripción','Importe'], filas: filas, origen: origen, monedaFija: monedaFija };
@@ -818,10 +926,12 @@
         const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
         let hr = 0, best = -1;
         for (let i=0;i<Math.min(rows.length,15);i++){ const ne = rows[i].filter(c=>String(c).trim()!=='').length; if (ne>=2 && ne>best){best=ne;hr=i;} }
-        const headers = (rows[hr]||[]).map(h=>String(h).trim());
-        const filas = rows.slice(hr+1).filter(r => r.some(c=>String(c).trim()!==''));
+        let headers = (rows[hr]||[]).map(h=>String(h).trim());
+        let filas = rows.slice(hr+1).filter(r => r.some(c=>String(c).trim()!==''));
         if (!filas.length) { panel.innerHTML = '<div class="vacio">No encontré filas de datos en el archivo.</div>'; input.value=''; return; }
-        IMP = { headers, filas, origen: '' };
+        const comb = combinarDebitoCredito(headers, filas);
+        headers = comb.headers; filas = comb.filas;
+        IMP = { headers: headers, filas: filas, origen: detectarOrigenTabla(headers, file.name) };
         mostrarMapeo();
       } catch (e) { panel.innerHTML = '<div class="vacio">No pude leer el archivo ('+e.message+').</div>'; }
       input.value = '';
@@ -830,7 +940,7 @@
     function mostrarMapeo() {
       const h = IMP.headers;
       const cF = detectarCol(h, /fecha|date|d[ií]a/i);
-      const cM = detectarCol(h, /importe|monto|amount|valor|value|neto|^net|total/i);
+      const cM = detectarColMonto(h, IMP.filas);
       const cD = detectarCol(h, /descrip|concepto|detalle|memo|referen|reference|comercio|merchant|nombre|name|movimiento/i);
       const cMon = detectarCol(h, /moneda|divisa|currency|curr/i);
       const panel = document.getElementById('import-panel');
@@ -846,8 +956,8 @@
           <button onclick="previsualizarImport()">Previsualizar</button>
           <div id="import-preview"></div>
         </div>`;
-      if (IMP.monedaFija) document.getElementById('map-moneda').value = 'fija-' + IMP.monedaFija;
-      else if (cMon >= 0) document.getElementById('map-moneda').value = String(cMon);
+      if (cMon >= 0) document.getElementById('map-moneda').value = String(cMon);
+      else if (IMP.monedaFija) document.getElementById('map-moneda').value = 'fija-' + IMP.monedaFija;
     }
     function leerMapeo() {
       return {
@@ -879,7 +989,7 @@
     function previsualizarImport() {
       const items = interpretarFilas();
       const prev = document.getElementById('import-preview');
-      if (!items.length) { prev.innerHTML = '<div class="vacio">No pude interpretar montos válidos. Revisá la columna Monto.</div>'; return; }
+      if (!items.length) { prev.innerHTML = '<div class="vacio">No pude interpretar montos válidos. Probá con otra columna en Monto.</div>'; return; }
       const porDest = {}; items.forEach(i=>{porDest[i.destino]=(porDest[i.destino]||0)+1;});
       const resumen = Object.keys(porDest).map(k=>porDest[k]+' → '+k).join(' · ');
       const muestra = items.slice(0,3).map(i=>`<div class="fila"><span>${i.fecha?i.fecha.toLocaleDateString('es-AR'):'sin fecha'} · ${i.desc||'—'}</span><span>${simbolo(i.moneda)}${fmtMonto(i.monto)} → ${i.destino}</span></div>`).join('');
@@ -938,7 +1048,7 @@
       XLSX.writeFile(wb, 'mis-finanzas-' + hoyISO() + '.xlsx');
     }
 
-    const BANCOS_SUGERIDOS = ['Mercado Pago', 'BBVA', 'ING', 'Galicia', 'Santander', 'Nación', 'Brubank', 'Ualá', 'Wise', 'eToro', 'Efectivo'];
+    const BANCOS_SUGERIDOS = ['Mercado Pago', 'BBVA', 'ING', 'Wise', 'Galicia', 'Santander', 'Nación', 'Brubank', 'Ualá', 'eToro', 'Efectivo'];
     let bancos = JSON.parse(localStorage.getItem('mf_bancos') || 'null');
     let onbSel = [];
     function bancosActivos() { return (bancos && bancos.length) ? bancos : ['Mercado Pago', 'BBVA', 'Wise']; }
